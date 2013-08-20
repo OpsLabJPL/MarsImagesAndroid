@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical"
+  android:layout_width="match_parent"
+  android:layout_height="?android:attr/listPreferredItemHeight"
+  android:padding="6dip">
+    
+    <ImageView
+        android:id="@+id/thumbnailIcon"
+        
+        android:layout_width="wrap_content"
+        android:layout_height="fill_parent"
+        
+        android:layout_alignParentTop="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="6dip" android:contentDescription="@string/thumbnail_view_of_the_image"/>
+        <!-- android:src="@drawable/icon" --> 
+
+    <TextView  
+        android:id="@+id/secondLine"
+
+        android:layout_width="fill_parent"
+        android:layout_height="31dip" 
+        
+        android:layout_toRightOf="@id/thumbnailIcon"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        
+        android:textColor="#aaaaaa"
+        android:singleLine="true"
+        android:ellipsize="marquee"/>
+        <!-- android:text="Simple application that shows how to use RelativeLayout" --> 
+
+    <TextView
+        android:id="@+id/firstLine"
+        
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        
+        android:layout_toRightOf="@id/thumbnailIcon"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:layout_above="@id/secondLine"
+        android:layout_alignWithParentIfMissing="true"
+        android:textColor="#ffffff"
+                
+        android:gravity="center_vertical"/>
+        <!-- android:text="My Application" --> 
+        
+</RelativeLayout>
