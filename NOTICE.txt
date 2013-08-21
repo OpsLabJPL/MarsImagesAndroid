@@ -1,0 +1,25 @@
+Mars Images for Android
+
+Copyright © 2011-2013 California Institute of Technology. ALL RIGHTS
+RESERVED. United States Government Sponsorship Acknowledged. Any
+commercial use must be negotiated with with Office of Technology
+Transfer at the California Institute of Technology. This software may
+be subject to U.S. export control laws. By accepting this software,
+the user agrees to comply with all applicable U.S. export laws and
+regulations. User has the responsibility to obtain export licenses,
+or other export authority as may be required before exporting such
+information to foreign countries or providing access to foreign
+persons. Neither the name of Caltech nor its operating division, the
+Jet Propulsion Laboratory, nor the names of its contributors may be
+used to endorse or promote products derived from this software
+without specific prior written permission.
+
+This product includes the Evernote SDK for Java version 1.23. The Evernote SDK for Java is freely distributable under the terms of a Free-BSD style license. For details see https://github.com/evernote/evernote-sdk-java
+
+This product includes the ActionBarSherlock library version 4.3.1 written by Jake Wharton. ActionBarSherlock is freely distributable under the Apache v2.0 license. For details see https://github.com/JakeWharton/ActionBarSherlock
+
+This product includes Apache Commons libraries for Java including Commons Codec, Commons Lang, and Commons IO. These libraries are freely distributable under the Apache v2.0 license. For details see http://commons.apache.org/
+
+This product includes Apache HttpComponents library for Java. This library is freely distributable under the Apache v2.0 license. For details see http://hc.apache.org/
+
+This project includes the Simple Logging Facade for Java. This library is freely distributable under the MIT license. For details see http://www.slf4j.org/
