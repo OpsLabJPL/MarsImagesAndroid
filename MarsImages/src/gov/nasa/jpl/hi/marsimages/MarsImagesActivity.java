@@ -362,7 +362,8 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 
 		private ImageView imageView;
 		private ProgressBar imageProgress;
-
+		private String imageID;
+		
 		public AlertDialog alertDialog;
 
 		@Override
@@ -408,6 +409,10 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 			}
 		}
 
+		public void setImageID(String id) {
+			imageID = id;
+		}
+		
 		public void setPreviewImage(byte[] result) {
 			//free any existing bitmap memory ASAP
 			if (imageView == null) {
@@ -442,7 +447,11 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 				Log.i(TAG, "imageview clicked");
 				byte[] selectedImageBytes = ((MarsImagesApp)getActivity().getApplication()).getSelectedImageBytes();
 				if (selectedImageBytes != null) {
-					((MarsImagesActivity)getActivity()).createFullscreenImageViewActivity(selectedImageBytes);
+					if(!(imageID.equals("Course"))) {
+						((MarsImagesActivity)getActivity()).createFullscreenImageViewActivity(selectedImageBytes);
+					} else {
+						((MarsImagesActivity)getActivity()).createPlotMapViewActivity(selectedImageBytes);
+					}
 				}
 			}
 		};
@@ -615,6 +624,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 				protected void onPostExecute(byte[] result) {
 					if (imagePreviewFragment != null) {
 						imagePreviewFragment.imageProgress.setVisibility(ProgressBar.INVISIBLE);
+						((SherlockFragmentActivity)getActivity()).setSupportProgressBarIndeterminateVisibility(false);
 					}
 					if (result == null)
 						return;
@@ -637,6 +647,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 					if (imagePreviewFragment != null) {
 						imagePreviewFragment.imageProgress.setVisibility(ProgressBar.INVISIBLE);
 						imagePreviewFragment.setPreviewImage(result);
+						imagePreviewFragment.setImageID(imageId);
 					} else {
 						if(!(imageId.equals("Course"))) {
 							((MarsImagesActivity)getActivity()).createFullscreenImageViewActivity(result);
