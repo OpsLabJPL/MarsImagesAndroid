@@ -53,6 +53,7 @@ public class MarsImagesApp extends Application implements IEvernoteServer {
 	public static final String PNG_MIME_TYPE = "image/png";
 	public static final String MARS_IMAGE_FILENAME = "MarsImage.jpg";
 	public static final String MARS_PLOT_FILENAME = "PlotMapImage.jpg";
+	public static final String MARS_IMAGE_TEMP = "MarsImageTEMP.jpg";
 
 	private static final String USER_AGENT = "Evernote/MarsImages (Android) " + 
 			Constants.EDAM_VERSION_MAJOR + "." + 

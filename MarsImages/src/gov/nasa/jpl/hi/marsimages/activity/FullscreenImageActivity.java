@@ -1,6 +1,7 @@
 package gov.nasa.jpl.hi.marsimages.activity;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGE_FILENAME;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGE_TEMP;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_PLOT_FILENAME;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
@@ -33,11 +34,13 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
+import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -87,7 +90,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 		setSupportProgressBarIndeterminateVisibility(false);
 		if (bitmap == null) {
 			try {
-				File cacheFile = new File(getCacheDir(), MARS_IMAGE_FILENAME);
+				File cacheFile = new File(getCacheDir(), MARS_IMAGE_TEMP);
 				FileInputStream fileInputStream = new FileInputStream(cacheFile);
 				ByteArrayOutputStream bos = new ByteArrayOutputStream();
 				IOUtils.copy(fileInputStream, bos);
@@ -107,7 +110,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 				alertDialog.show();
 			}
 			finally {
-				setProgressBarIndeterminateVisibility(false);
+				setSupportProgressBarIndeterminateVisibility(false);
 			}
 		}
 	}
@@ -142,20 +145,20 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 	}
 	
 	void reloadImage() {
-		setProgressBarIndeterminateVisibility(true);
+		setSupportProgressBarIndeterminateVisibility(true);
 		
 		new AsyncTask<Void, Void, Void>() {
 
 			@Override
 			protected Void doInBackground(Void...params) {
-				bitmap = BitmapFactory.decodeFile(new File(getCacheDir(), MARS_IMAGE_FILENAME).getAbsolutePath());
+				bitmap = BitmapFactory.decodeFile(new File(getCacheDir(), MARS_IMAGE_TEMP).getAbsolutePath());
 				imageViewFragment.getView().setImage(bitmap);
 				return null;
 			}
 			
 			@Override
 			protected void onPostExecute(Void v) {
-				setProgressBarIndeterminateVisibility(false);
+				setSupportProgressBarIndeterminateVisibility(false);
 			}
 		}.execute();
 	}
@@ -196,7 +199,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			}
 
 			//go to 3D
-			setProgressBarIndeterminateVisibility(true);
+			setSupportProgressBarIndeterminateVisibility(true);
 			new AsyncTask<Note, Void, byte[]>() {
 				@Override
 				protected byte[] doInBackground(Note... note) {
@@ -223,7 +226,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 					if (result == null)
 						return;
 
-					setProgressBarIndeterminateVisibility(false);
+					setSupportProgressBarIndeterminateVisibility(false);
 					try {
 						Bitmap otherBitmap = BitmapFactory.decodeStream(new ByteArrayInputStream(result));
 						Bitmap image1 = null, image2 = null;
@@ -290,7 +293,30 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			
 			Note note = app.getSelectedNote();
 			shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "From Mars Images: " + note.getTitle());
+			
 			//an email attachment will only work if the file to attach is on external storage
+			BitmapDrawable image;
+			if(getView().is3D()) {
+				image = getView().get3DImage();
+			} else {
+				image = getView().getImage1();
+			}
+			
+			Bitmap b = image.getBitmap();
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+			b.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+			byte[] bitmapdata = outputStream.toByteArray();
+			
+			try {
+				FileOutputStream fileOutputStream = new FileOutputStream(
+						new File(getApplication().getCacheDir(), MARS_IMAGE_FILENAME));
+				fileOutputStream.write(bitmapdata);
+				fileOutputStream.flush();
+				fileOutputStream.close();
+			} catch (IOException e) {
+				Log.e(TAG, "Unable to write to internal storage to start FullscreenImageView");
+			}
+			
 			File jpegFile = new File(Environment.getExternalStorageDirectory(), MARS_IMAGE_FILENAME);
 			File cacheFile = new File(getCacheDir(), MARS_IMAGE_FILENAME);
 			FileInputStream fis;
@@ -328,6 +354,24 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			try {
 				FileOutputStream fOut = new FileOutputStream(file);
 
+				BitmapDrawable img;
+				if(getView().is3D()) {
+					img = getView().get3DImage();
+				} else {
+					img = getView().getImage1();
+				}
+				
+				Bitmap b1 = img.getBitmap();
+				ByteArrayOutputStream str = new ByteArrayOutputStream();
+				b1.compress(Bitmap.CompressFormat.JPEG, 100, str);
+				byte[] data = str.toByteArray();
+				
+				FileOutputStream fOS = new FileOutputStream(
+						new File(getApplication().getCacheDir(), MARS_IMAGE_FILENAME));
+				fOS.write(data);
+				fOS.flush();
+				fOS.close();
+				
 				Bitmap bitmap = BitmapFactory.decodeFile(new File(getCacheDir(), MARS_IMAGE_FILENAME).getAbsolutePath());
 				bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut);
 				
@@ -355,7 +399,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			break;
 			
 		case R.id.plot:
-			setProgressBarIndeterminateVisibility(false);
+			setSupportProgressBarIndeterminateVisibility(false);
 			
 			ByteArrayOutputStream stream = new ByteArrayOutputStream();
 			plotMap.compress(Bitmap.CompressFormat.PNG, 100, stream);

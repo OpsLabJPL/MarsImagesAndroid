@@ -1,6 +1,6 @@
 package gov.nasa.jpl.hi.marsimages;
 
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGE_FILENAME;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGE_TEMP;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_PLOT_FILENAME;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 import gov.nasa.jpl.hi.marsimages.activity.AboutThisAppActivity;
@@ -34,6 +34,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.SearchRecentSuggestions;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -339,7 +340,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 		// write the JPEG image data for the image view to the cache file area 
 		try {
 			FileOutputStream fileOutputStream = new FileOutputStream(
-					new File(getApplication().getCacheDir(), MARS_IMAGE_FILENAME));
+					new File(getApplication().getCacheDir(), MARS_IMAGE_TEMP));
 			fileOutputStream.write(selectedImageBytes);
 			fileOutputStream.flush();
 			fileOutputStream.close();
@@ -724,7 +725,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 				//is the bottom item visible & not loading more already ? Load more!
 				if ((lastInScreen == totalItemCount)) {
 					((SherlockFragmentActivity)getActivity()).setSupportProgressBarIndeterminateVisibility(true);
-					new Thread(null, loadMoreListItems).start();
+                    new Thread(null, loadMoreListItems).start();
 				}
 			};
 

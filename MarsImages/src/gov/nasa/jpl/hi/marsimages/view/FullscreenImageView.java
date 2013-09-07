@@ -107,9 +107,25 @@ public class FullscreenImageView extends View {
 		image2 = new BitmapDrawable(getContext().getResources(), rightImage);
 		image2.setBounds(0, 0, rightImage.getWidth(), rightImage.getHeight());
 	}
+	
+	public BitmapDrawable getImage1() {
+		return image1;
+	}
 
 	public BitmapDrawable getImage2() {
 		return image2;
+	}
+	
+	public BitmapDrawable get3DImage() {
+		return image3D;
+	}
+	
+	public boolean is3D() {
+		if (image2 == null) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 
 	public Bitmap overlayImages(BitmapDrawable left, BitmapDrawable right) {
