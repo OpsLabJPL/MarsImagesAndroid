@@ -11,7 +11,7 @@ The app is organized as an Eclipse Android project using the Android developer t
 Features
 ========
 
-![Mars Images Android screenshot](http://opslabjpl.github.io/MarsImagesIOS/images/AndroidSpirit.png?raw=true) ![Mars Images Android screenshot](http://opslabjpl.github.io/MarsImagesIOS/images/AndroidOppy.png?raw=true)
+![Mars Images Android screenshot](http://opslabjpl.github.io/MarsImagesAndroid/images/MarsImagesAndroidMastcam.png?raw=true) ![Mars Images Android screenshot](http://opslabjpl.github.io/MarsImagesAndroid/images/MarsImagesAndroidOppy.png?raw=true)
 
 - Browse images from the Spirit, Opportunity, and Curiosity missions
 - Search for images within a mission by time or type
