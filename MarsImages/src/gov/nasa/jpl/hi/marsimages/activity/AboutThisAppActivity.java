@@ -1,5 +1,6 @@
 package gov.nasa.jpl.hi.marsimages.activity;
 
+import android.app.Activity;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -7,9 +8,7 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.actionbarsherlock.app.SherlockActivity;
-
-public class AboutThisAppActivity extends SherlockActivity {
+public class AboutThisAppActivity extends Activity {
 
 	public static final String INTENT_ACTION_ABOUT_THIS_APP = "gov.nasa.jpl.hi.marsimages.ABOUT_THIS_APP";
 	

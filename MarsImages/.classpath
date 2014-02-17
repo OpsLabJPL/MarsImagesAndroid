@@ -17,6 +17,5 @@
 	<classpathentry exported="true" kind="lib" path="libs/httpmime-4.1.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="libs/org.apache.commons.io_1.4.0.v20081110-1000.jar"/>
 	<classpathentry exported="true" kind="lib" path="libs/slf4j-android-1.5.8.jar"/>
-	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/ActionBarSherlock4.3.1"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

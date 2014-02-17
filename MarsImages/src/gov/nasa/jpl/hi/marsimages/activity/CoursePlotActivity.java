@@ -24,18 +24,18 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-import com.actionbarsherlock.app.SherlockFragment;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuItem;
 import com.evernote.edam.type.Note;
 import com.powellware.marsimages.R;
 
@@ -48,7 +48,7 @@ import com.powellware.marsimages.R;
  * <li>email this image to someone
  * </ul> 
  */
-public class CoursePlotActivity extends SherlockFragmentActivity {
+public class CoursePlotActivity extends FragmentActivity {
 	private Bitmap bitmap;
 	private AlertDialog alertDialog;
 	private ImageViewFragment imageViewFragment; 
@@ -95,7 +95,7 @@ public class CoursePlotActivity extends SherlockFragmentActivity {
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		getSupportMenuInflater().inflate(R.menu.plot_menu, menu);
+		getMenuInflater().inflate(R.menu.plot_menu, menu);
 
 		menu.findItem(R.id.share).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		menu.findItem(R.id.save).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -201,7 +201,7 @@ public class CoursePlotActivity extends SherlockFragmentActivity {
 	 * Creates an image view with a Progress indicator for image fetching feedback.
 	 * If you select it, it will open a full-screen interactive image view.  
 	 */
-	public static class ImageViewFragment extends SherlockFragment {
+	public static class ImageViewFragment extends Fragment {
 		
 		private FullscreenImageView view;
 		

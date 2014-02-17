@@ -41,18 +41,17 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-import com.actionbarsherlock.app.SherlockFragment;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuItem;
 import com.evernote.edam.type.Note;
 import com.powellware.marsimages.R;
 
@@ -65,7 +64,7 @@ import com.powellware.marsimages.R;
  * <li>email this image to someone
  * </ul> 
  */
-public class FullscreenImageActivity extends SherlockFragmentActivity {
+public class FullscreenImageActivity extends FragmentActivity {
 
 	private Bitmap bitmap;
 	private Bitmap plotMap;
@@ -87,7 +86,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 	protected void onStart() {
 		super.onStart();
 
-		setSupportProgressBarIndeterminateVisibility(false);
+		setProgressBarIndeterminateVisibility(false);
 		if (bitmap == null) {
 			try {
 				File cacheFile = new File(getCacheDir(), MARS_IMAGE_TEMP);
@@ -110,7 +109,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 				alertDialog.show();
 			}
 			finally {
-				setSupportProgressBarIndeterminateVisibility(false);
+				setProgressBarIndeterminateVisibility(false);
 			}
 		}
 	}
@@ -145,7 +144,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 	}
 	
 	void reloadImage() {
-		setSupportProgressBarIndeterminateVisibility(true);
+		setProgressBarIndeterminateVisibility(true);
 		
 		new AsyncTask<Void, Void, Void>() {
 
@@ -158,7 +157,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			
 			@Override
 			protected void onPostExecute(Void v) {
-				setSupportProgressBarIndeterminateVisibility(false);
+				setProgressBarIndeterminateVisibility(false);
 			}
 		}.execute();
 	}
@@ -169,13 +168,13 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 		plotMap = ((MarsImagesApp)getApplication()).getPlotMapImage();
 		
 		if (anaglyphImageNote != null) {
-			getSupportMenuInflater().inflate(R.menu.stereo_menu, menu);
+			getMenuInflater().inflate(R.menu.stereo_menu, menu);
 			menu.findItem(R.id.stereo).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		} else {
-			getSupportMenuInflater().inflate(R.menu.nonstereo_menu, menu);
+			getMenuInflater().inflate(R.menu.nonstereo_menu, menu);
 		}
 		if(plotMap != null) {
-			getSupportMenuInflater().inflate(R.menu.plot_item_menu, menu);
+			getMenuInflater().inflate(R.menu.plot_item_menu, menu);
 			menu.findItem(R.id.plot).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		}
 		menu.findItem(R.id.info).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -199,7 +198,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			}
 
 			//go to 3D
-			setSupportProgressBarIndeterminateVisibility(true);
+			setProgressBarIndeterminateVisibility(true);
 			new AsyncTask<Note, Void, byte[]>() {
 				@Override
 				protected byte[] doInBackground(Note... note) {
@@ -226,7 +225,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 					if (result == null)
 						return;
 
-					setSupportProgressBarIndeterminateVisibility(false);
+					setProgressBarIndeterminateVisibility(false);
 					try {
 						Bitmap otherBitmap = BitmapFactory.decodeStream(new ByteArrayInputStream(result));
 						Bitmap image1 = null, image2 = null;
@@ -399,7 +398,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 			break;
 			
 		case R.id.plot:
-			setSupportProgressBarIndeterminateVisibility(false);
+			setProgressBarIndeterminateVisibility(false);
 			
 			ByteArrayOutputStream stream = new ByteArrayOutputStream();
 			plotMap.compress(Bitmap.CompressFormat.PNG, 100, stream);
@@ -462,7 +461,7 @@ public class FullscreenImageActivity extends SherlockFragmentActivity {
 	 * Creates an image view with a Progress indicator for image fetching feedback.
 	 * If you select it, it will open a full-screen interactive image view.  
 	 */
-	public static class ImageViewFragment extends SherlockFragment {
+	public static class ImageViewFragment extends Fragment {
 		
 		private FullscreenImageView view;
 		

@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import android.annotation.TargetApi;
+import android.app.ActionBar.LayoutParams;
 import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.Context;
@@ -31,18 +33,25 @@ import android.graphics.BitmapFactory.Options;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.SearchRecentSuggestions;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.ListFragment;
+import android.support.v4.view.MenuItemCompat;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.SubMenu;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
 import android.widget.AbsListView;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.FrameLayout;
@@ -50,17 +59,10 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
-import com.actionbarsherlock.app.SherlockFragment;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.app.SherlockListFragment;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuItem;
-import com.actionbarsherlock.view.SubMenu;
-import com.actionbarsherlock.view.Window;
 import com.evernote.edam.type.Note;
 import com.powellware.marsimages.R;
 
-public class MarsImagesActivity extends SherlockFragmentActivity {
+public class MarsImagesActivity extends FragmentActivity {
 
 	private final static NumberFormat num4 = DecimalFormat.getIntegerInstance();
 	static {
@@ -139,7 +141,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 	@Override
 	public void onResume() {
 		super.onResume();
-		setSupportProgressBarIndeterminateVisibility(false);
+		setProgressBarIndeterminateVisibility(false);
 		
 		//if search was performed, update the image results
         if (!MarsImagesApp.searchWords.equals(searchWordsBeforePause) && mImageListFragment != null) {
@@ -178,22 +180,23 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 		if (MarsImagesApp.getMission().equals(MarsImagesApp.OPPORTUNITY_MISSION) ||
 				MarsImagesApp.getMission().equals(MarsImagesApp.SPIRIT_MISSION)) {
 			//use the version of the menu that includes the latest course plot: MER-only
-			getSupportMenuInflater().inflate(R.menu.image_menu_merb, menu);
-			menu.findItem(R.id.latest_plot).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+			getMenuInflater().inflate(R.menu.image_menu_merb, menu);
+			MenuItem menuItem = menu.findItem(R.id.latest_plot);
+			showAsActionAlways(new MenuItem[] {menuItem});
 		} else {
 			//use the version of the menu without the course plot action
-			getSupportMenuInflater().inflate(R.menu.image_menu, menu);
+			getMenuInflater().inflate(R.menu.image_menu, menu);
 		}
-		menu.findItem(R.id.refresh).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-		menu.findItem(R.id.about).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-		menu.findItem(R.id.search).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+		showAsActionIfRoom(new MenuItem[] {
+			menu.findItem(R.id.refresh), menu.findItem(R.id.about), menu.findItem(R.id.search)
+		});
 
         SubMenu missionsMenu = menu.addSubMenu("Missions");
-		getSupportMenuInflater().inflate(R.menu.mission_preferences_menu, missionsMenu);
+		getMenuInflater().inflate(R.menu.mission_preferences_menu, missionsMenu);
 
         MenuItem missionsMenuItem = missionsMenu.getItem();
         missionsMenuItem.setIcon(R.drawable.rover_prefs);
-        missionsMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        showAsActionAlways(new MenuItem[] { missionsMenuItem });
         
         if(MarsImagesApp.getMission().equals(MarsImagesApp.SPIRIT_MISSION)) {
         	missionsMenu.findItem(R.id.spirit).setChecked(true);
@@ -205,6 +208,20 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 		return menu;
 	}
 
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private void showAsActionAlways(MenuItem[] items) {
+		for (MenuItem menuItem : items) {
+			MenuItemCompat.setShowAsAction(menuItem, MenuItem.SHOW_AS_ACTION_ALWAYS);
+		}
+	}
+	
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private void showAsActionIfRoom(MenuItem[] items) {
+		for (MenuItem menuItem : items) {
+			MenuItemCompat.setShowAsAction(menuItem, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+		}
+	}
+	
 	/** 
 	 * Handle menu item selection.
 	 */
@@ -359,7 +376,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 	 * Creates an image view with a Progress indicator for image fetching feedback.
 	 * If you select it, it will open a full-screen interactive image view.  
 	 */
-	public static class ImagePreviewFragment extends SherlockFragment {
+	public static class ImagePreviewFragment extends Fragment {
 
 		private ImageView imageView;
 		private ProgressBar imageProgress;
@@ -468,7 +485,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 	 * The scroll listener detects when the end of the list is displayed and starts
 	 * a thread to load more images, creating an infinite-scrolling effect.
 	 */
-	public static class ImageListFragment extends SherlockListFragment {
+	public static class ImageListFragment extends ListFragment {
 
 		private static final String OFFSET_REQUESTED = "offsetRequested";
 		private static final int NOTE_BATCH_SIZE = 10;
@@ -586,7 +603,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 			super.onListItemClick(l, v, position, id);
 			final MarsImagesApp app = (MarsImagesApp)getActivity().getApplication();
 			final ImagePreviewFragment imagePreviewFragment = ((MarsImagesActivity)getActivity()).mImagePreviewFragment;
-			((SherlockFragmentActivity)getActivity()).setSupportProgressBarIndeterminateVisibility(true);
+			((FragmentActivity)getActivity()).setProgressBarIndeterminateVisibility(true);
 			if (imagePreviewFragment != null) {
 				imagePreviewFragment.imageProgress.setVisibility(ProgressBar.VISIBLE);
 			}
@@ -625,7 +642,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 				protected void onPostExecute(byte[] result) {
 					if (imagePreviewFragment != null) {
 						imagePreviewFragment.imageProgress.setVisibility(ProgressBar.INVISIBLE);
-						((SherlockFragmentActivity)getActivity()).setSupportProgressBarIndeterminateVisibility(false);
+						((FragmentActivity)getActivity()).setProgressBarIndeterminateVisibility(false);
 					}
 					if (result == null)
 						return;
@@ -724,7 +741,7 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 				int lastInScreen = firstVisibleItem + visibleItemCount;            
 				//is the bottom item visible & not loading more already ? Load more!
 				if ((lastInScreen == totalItemCount)) {
-					((SherlockFragmentActivity)getActivity()).setSupportProgressBarIndeterminateVisibility(true);
+					((FragmentActivity)getActivity()).setProgressBarIndeterminateVisibility(true);
                     new Thread(null, loadMoreListItems).start();
 				}
 			};
@@ -771,12 +788,12 @@ public class MarsImagesActivity extends SherlockFragmentActivity {
 			 */
 			private Runnable returnRes = new Runnable() {
 				public void run() {
-					SherlockFragmentActivity activity = (SherlockFragmentActivity) getActivity();
+					FragmentActivity activity = (FragmentActivity) getActivity();
 					if (activity == null) { //unit test
 						return;
 					}
 
-					activity.setSupportProgressBarIndeterminateVisibility(false);
+					activity.setProgressBarIndeterminateVisibility(false);
 					int firstPosition = getListView().getFirstVisiblePosition();
 					if (moreNotes != null && moreNotes.size() > 0) {
 						noteListAdapter.addAll(moreNotes);
