@@ -1,7 +1,9 @@
 package gov.nasa.jpl.hi.marsimages;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -21,17 +23,23 @@ import com.evernote.thrift.TException;
 import com.evernote.thrift.protocol.TBinaryProtocol;
 import com.evernote.thrift.transport.THttpClient;
 import com.evernote.thrift.transport.TTransportException;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import gov.nasa.jpl.hi.marsimages.rovers.Curiosity;
 import gov.nasa.jpl.hi.marsimages.rovers.Opportunity;
 import gov.nasa.jpl.hi.marsimages.rovers.Rover;
 import gov.nasa.jpl.hi.marsimages.rovers.Spirit;
+
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
 /**
  * Created by mpowell on 4/12/14.
@@ -49,7 +57,7 @@ public class EvernoteMars {
     private PublicUserInfo userInfo;
     private String uriPrefix;
 
-    private static List<Note> notesArray = new ArrayList<Note>();
+    private static List<Note> notesArray = Lists.newArrayList();
 
     private static int NOTE_PAGE_SIZE = 15;
 
@@ -61,10 +69,7 @@ public class EvernoteMars {
     public static final String END_NOTE_LOADING   = "endNoteLoading";
     public static final String NUM_NOTES_RETURNED = "numNotesReturned";
 
-    private static final Map<String, String> notebookIDs = new HashMap<String, String>();
-
-    private static String missionName = Rover.CURIOSITY;
-    private static Map<String, Rover> missions = new HashMap<String, Rover>();
+    private static final Map<String, String> notebookIDs = Maps.newHashMap();
 
     private static String searchWords = null;
 
@@ -72,12 +77,21 @@ public class EvernoteMars {
         notebookIDs.put(Rover.CURIOSITY, MSL_NOTEBOOK_ID);
         notebookIDs.put(Rover.OPPORTUNITY, OPPY_NOTEBOOK_ID);
         notebookIDs.put(Rover.SPIRIT, SPIRIT_NOTEBOOK_ID);
-
-        missions.put(Rover.CURIOSITY, new Curiosity());
-        missions.put(Rover.OPPORTUNITY, new Opportunity());
-        missions.put(Rover.SPIRIT, new Spirit());
     }
 
+    private EvernoteMars() {
+        LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(mMessageReceiver,
+                new IntentFilter(MarsImagesApp.MISSION_CHANGED));
+    }
+
+    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            //intent action: mission changed
+            notesArray.clear();
+            EvernoteMars.reloadNotes(context);
+        }
+    };
 
     public int getNotesCount() {
         return notesArray.size();
@@ -96,11 +110,12 @@ public class EvernoteMars {
 
     private void connect() throws TException, EDAMSystemException, EDAMUserException, EDAMNotFoundException {
         if (noteStore == null) {
+            Stopwatch watch = Stopwatch.createStarted();
             String userStoreUrl = "https://www.evernote.com/edam/user";
             THttpClient userStoreHttpClient = new THttpClient(userStoreUrl);
             TBinaryProtocol userStoreProtocol = new TBinaryProtocol(userStoreHttpClient);
             userStore = new UserStore.Client(userStoreProtocol, userStoreProtocol);
-            String user = getMission().getUser();
+            String user = MARS_IMAGES.getMission().getUser();
             userInfo = userStore.getPublicUserInfo(user);
             uriPrefix = userStore.getPublicUserInfo(user).getWebApiUrlPrefix();
             String noteStoreUrl = userInfo.getNoteStoreUrl();
@@ -108,6 +123,7 @@ public class EvernoteMars {
             THttpClient noteStoreHttpClient = new THttpClient(noteStoreUrl);
             TBinaryProtocol noteStoreProtocol = new TBinaryProtocol(noteStoreHttpClient);
             noteStore = new NoteStore.Client(noteStoreProtocol, noteStoreProtocol);
+            Log.d("evernote connect", "Time to connect to Evernote: "+ watch.elapsed(TimeUnit.MILLISECONDS)+" ms");
         }
     }
 
@@ -172,7 +188,7 @@ public class EvernoteMars {
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 
                 NoteFilter filter = new NoteFilter();
-                filter.setNotebookGuid(notebookIDs.get(missionName));
+                filter.setNotebookGuid(notebookIDs.get(MARS_IMAGES.getMissionName()));
                 filter.setOrder(NoteSortOrder.TITLE.getValue());
                 filter.setAscending(false);
                 if (searchWords != null && searchWords.length()>0) {
@@ -261,15 +277,16 @@ public class EvernoteMars {
     }
 
     private Note reorderResources(Note note) {
-        List<String> resourceFilenames = new ArrayList<String>();
-        Map<String, Resource> resourcesByFile = new HashMap<String, Resource>();
+        List<String> resourceFilenames = Lists.newArrayList();
+        Map<String, Resource> resourcesByFile = Maps.newHashMap();
         for (Resource resource : note.getResources()) {
-            String filename = getMission().getSortableImageFilename(resource.getAttributes().getSourceURL());
+            Rover mission = MARS_IMAGES.getMission();
+            String filename = mission.getSortableImageFilename(resource.getAttributes().getSourceURL());
             resourceFilenames.add(filename);
             resourcesByFile.put(filename, resource);
         }
         Collections.sort(resourceFilenames);
-        List<Resource> sortedResources = new ArrayList<Resource>();
+        List<Resource> sortedResources = Lists.newArrayList();
         for (String resourceFilename : resourceFilenames) {
             sortedResources.add(resourcesByFile.get(resourceFilename));
         }
@@ -277,8 +294,13 @@ public class EvernoteMars {
         return note;
     }
 
-    public Rover getMission() {
-        return missions.get(missionName);
+    private static void reloadNotes(Context context) {
+        notesArray.clear();
+        EVERNOTE.noteStore = null;
+        EVERNOTE.userStore = null;
+        EVERNOTE.userInfo = null;
+        EVERNOTE.uriPrefix = null;
+        EVERNOTE.loadMoreNotes(context);
     }
 
     private String formatSearch(String text) {

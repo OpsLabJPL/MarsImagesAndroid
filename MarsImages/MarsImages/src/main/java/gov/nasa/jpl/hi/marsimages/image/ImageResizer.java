@@ -120,7 +120,7 @@ public class ImageResizer extends ImageWorker {
         BitmapFactory.decodeResource(res, resId, options);
 
         // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+//        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight); //MWP disabled for speed!
         // END_INCLUDE (read_bitmap_dimensions)
 
         // If we're running on Honeycomb or newer, try to use inBitmap
@@ -152,7 +152,7 @@ public class ImageResizer extends ImageWorker {
         BitmapFactory.decodeFile(filename, options);
 
         // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+//        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight); //MWP disabled for speed!
 
         // If we're running on Honeycomb or newer, try to use inBitmap
         if (Utils.hasHoneycomb()) {

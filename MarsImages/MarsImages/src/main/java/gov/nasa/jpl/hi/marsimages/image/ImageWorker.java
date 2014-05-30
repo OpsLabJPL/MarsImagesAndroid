@@ -87,14 +87,15 @@ public abstract class ImageWorker {
         if (value != null) {
             // Bitmap found in memory cache
             imageView.setImageDrawable(value);
-            attacher.update();
-        } else if (cancelPotentialWork(data, imageView)) {
+            if (attacher != null) attacher.update();
+        }
+        else if (cancelPotentialWork(data, imageView)) {
             //BEGIN_INCLUDE(execute_background_task)
             final BitmapWorkerTask task = new BitmapWorkerTask(data, imageView, attacher);
             final AsyncDrawable asyncDrawable =
                     new AsyncDrawable(mResources, mLoadingBitmap, task);
             imageView.setImageDrawable(asyncDrawable);
-            attacher.update();
+            if (attacher != null) attacher.update();
 
             // NOTE: This uses a custom version of ImageAsyncTask that has been pulled from the
             // framework and slightly modified. Refer to the docs at the top of the class

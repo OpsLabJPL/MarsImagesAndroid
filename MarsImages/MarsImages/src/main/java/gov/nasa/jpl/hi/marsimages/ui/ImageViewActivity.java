@@ -6,61 +6,60 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.SubMenu;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.ImageView;
+import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
+import com.evernote.edam.type.Note;
+import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu;
+import com.jeremyfeinstein.slidingmenu.lib.app.SlidingFragmentActivity;
+import com.powellware.marsimages.R;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
+import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.Utils;
 import gov.nasa.jpl.hi.marsimages.image.ImageCache;
 import gov.nasa.jpl.hi.marsimages.image.ImageFetcher;
 
-import com.evernote.edam.type.Note;
-import com.powellware.marsimages.R;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
-public class ImageViewActivity extends ActionBarActivity
-        implements ImageListDrawerFragment.NavigationDrawerCallbacks {
+public class ImageViewActivity extends SlidingFragmentActivity
+        implements ActionBar.OnNavigationListener {
 
     private static final String IMAGE_CACHE_DIR = "images";
-    public static final String EXTRA_IMAGE = "extra_image";
 
-    private ImageListDrawerFragment mImageListDrawerFragment;
+    private static final String STATE_PAGE_NUMBER = "page_number";
+
     private ImagePagerAdapter mAdapter;
     private ViewPager mPager;
     private ImageFetcher mImageFetcher;
+    private ArrayAdapter<CharSequence> mSpinnerAdapter;
+    private boolean needToSetViewPagerToPageZeroDueToMissionChange = false;
+    private ImageListFragment mImageList;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         Utils.enableStrictMode();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -72,16 +71,9 @@ public class ImageViewActivity extends ActionBarActivity
         final int height = displayMetrics.heightPixels;
         final int width = displayMetrics.widthPixels;
 
-        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                new IntentFilter(EvernoteMars.END_NOTE_LOADING));
-
-        mImageListDrawerFragment = (ImageListDrawerFragment)
-                getSupportFragmentManager().findFragmentById(R.id.image_list_drawer);
-
-        // Set up the drawer.
-        mImageListDrawerFragment.setUp(
-                R.id.image_list_drawer,
-                (DrawerLayout) findViewById(R.id.drawer_layout));
+        IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
+        filter.addAction(MarsImagesApp.MISSION_CHANGED);
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
         final int longest = (height > width ? height : width) / 2;
 
@@ -91,7 +83,6 @@ public class ImageViewActivity extends ActionBarActivity
 
         // The ImageFetcher takes care of loading images into our ImageView children asynchronously
         mImageFetcher = new ImageFetcher(this, longest);
-        mImageFetcher.setLoadingImage(R.drawable.empty_photo);
         mImageFetcher.addImageCache(getSupportFragmentManager(), cacheParams);
         mImageFetcher.setImageFadeIn(false);
 
@@ -100,16 +91,31 @@ public class ImageViewActivity extends ActionBarActivity
         mPager = (ViewPager) findViewById(R.id.pager);
         mPager.setAdapter(mAdapter);
         mPager.setPageMargin((int) getResources().getDimension(R.dimen.horizontal_page_margin));
-        mPager.setOffscreenPageLimit(2);
+        mPager.setOffscreenPageLimit(1);
         mPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+            int currentPosition = 0;
+
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
+
+                ImageViewFragment fragmentToShow = (ImageViewFragment)mAdapter.getItem(position);
+                fragmentToShow.onResumeFragment();
+
+                ImageViewFragment fragmentToHide = (ImageViewFragment)mAdapter.getItem(position);
+                fragmentToHide.onPauseFragment();
+
+                currentPosition = position;
+
                 int noteCount = EVERNOTE.getNotesCount();
                 if (position >= noteCount - mPager.getOffscreenPageLimit()-1)
                     EVERNOTE.loadMoreNotes(ImageViewActivity.this);
             }
         });
+
+        mSpinnerAdapter = ArrayAdapter.createFromResource(this, R.array.missions, android.R.layout.simple_spinner_dropdown_item);
+        getActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+        getActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
 
         // Set up activity to go full screen
 //        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -141,32 +147,91 @@ public class ImageViewActivity extends ActionBarActivity
 //            actionBar.hide();
         }
 
-        // Set the current item based on the extra passed in to this activity
-        final int extraCurrentItem = getIntent().getIntExtra(EXTRA_IMAGE, -1);
-        if (extraCurrentItem != -1) {
-            mPager.setCurrentItem(extraCurrentItem);
+        if (savedInstanceState != null) {
+            int selectedPage = savedInstanceState.getInt(STATE_PAGE_NUMBER, -1);
+            if (selectedPage > -1) {
+                mAdapter.setCount(EVERNOTE.getNotesCount());
+                mAdapter.notifyDataSetChanged();
+                mPager.setCurrentItem(selectedPage);
+            }
         }
+
+        // set the Behind View
+        setBehindContentView(R.layout.menu_frame);
+        if (savedInstanceState == null) {
+            FragmentTransaction t = this.getSupportFragmentManager().beginTransaction();
+            mImageList = new ImageListFragment();
+            t.replace(R.id.menu_frame, mImageList);
+            t.commit();
+        } else {
+            mImageList = (ImageListFragment)this.getSupportFragmentManager().findFragmentById(R.id.menu_frame);
+        }
+
+        // customize the SlidingMenu
+        SlidingMenu sm = getSlidingMenu();
+        sm.setShadowWidthRes(R.dimen.shadow_width);
+        sm.setShadowDrawable(R.drawable.shadow);
+        sm.setBehindOffsetRes(R.dimen.slidingmenu_offset);
+        sm.setFadeDegree(0.35f);
+        sm.setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
+        sm.setBehindWidth(250);
+
+//        getActionBar().setDisplayHomeAsUpEnabled(true);
+
+        mPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrollStateChanged(int arg0) { }
+
+            @Override
+            public void onPageScrolled(int arg0, float arg1, int arg2) { }
+
+            @Override
+            public void onPageSelected(int position) {
+                switch (position) {
+                    case 0:
+                        getSlidingMenu().setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
+                        break;
+                    default:
+                        getSlidingMenu().setTouchModeAbove(SlidingMenu.TOUCHMODE_MARGIN);
+                        break;
+                }
+            }
+        });
 
         EVERNOTE.loadMoreNotes(this);
     }
 
     @Override
-    public void onNavigationDrawerItemSelected(int position) {
-        // update the main content by replacing fragments
-//        FragmentManager fragmentManager = getSupportFragmentManager();
-//        fragmentManager.beginTransaction()
-//                .replace(R.id.container, PlaceholderFragment.newInstance(position + 1))
-//                .commit();
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_PAGE_NUMBER, mPager.getCurrentItem());
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(int position, long itemId) {
+        String[] missionNames = getResources().getStringArray(R.array.missions);
+        MARS_IMAGES.setMission(missionNames[position], this);
+        return true;
     }
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Get extra data included in the Intent
-            Integer notesReturned = intent.getIntExtra(EvernoteMars.NUM_NOTES_RETURNED, 0);
-            Log.d("receiver", "Notes returned: " + notesReturned);
-            mAdapter.setCount(EVERNOTE.getNotesCount());
-            mAdapter.notifyDataSetChanged();
+            if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
+                Integer notesReturned = intent.getIntExtra(EvernoteMars.NUM_NOTES_RETURNED, 0);
+                Log.d("receiver", "Notes returned: " + notesReturned);
+                mAdapter.setCount(EVERNOTE.getNotesCount());
+                mAdapter.notifyDataSetChanged();
+                if (needToSetViewPagerToPageZeroDueToMissionChange) {
+                    needToSetViewPagerToPageZeroDueToMissionChange = false;
+                    mPager.setCurrentItem(0);
+                }
+            }
+            else if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
+                mAdapter.setCount(0);
+                mAdapter.notifyDataSetChanged();
+                needToSetViewPagerToPageZeroDueToMissionChange = true;
+            }
         }
     };
 
@@ -278,7 +343,7 @@ public class ImageViewActivity extends ActionBarActivity
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
         byte[] imageInByte = stream.toByteArray();
         File jpegFile = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES), EVERNOTE.getMission().getSortableImageFilename(imageURL));
+                Environment.DIRECTORY_PICTURES), MARS_IMAGES.getMission().getSortableImageFilename(imageURL));
         try {
             FileOutputStream fos = new FileOutputStream(jpegFile);
             fos.write(imageInByte);
@@ -295,6 +360,10 @@ public class ImageViewActivity extends ActionBarActivity
 
     private static String getImageViewTag(int number) {
         return "imageview"+number;
+    }
+
+    public static int getImageViewFragmentNumber(String tag) {
+        return Integer.parseInt(tag.substring(9));
     }
 
     public static class ImagePagerAdapter extends FragmentStatePagerAdapter {
@@ -316,6 +385,7 @@ public class ImageViewActivity extends ActionBarActivity
 
         @Override
         public Fragment getItem(int position) {
+            Log.d("getitem", "Getting fragment for index: "+position);
             String imageUrl = EVERNOTE.getNoteUrl(position);
             return ImageViewFragment.newInstance(imageUrl, ImageViewActivity.getImageViewTag(position));
         }
