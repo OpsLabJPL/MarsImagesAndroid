@@ -1,6 +1,7 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
 
+import android.annotation.SuppressLint;
 import android.app.ActionBar;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -27,9 +28,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.evernote.edam.type.Note;
+import com.nostra13.universalimageloader.core.ImageLoader;
 import com.powellware.marsimages.R;
 
 import java.io.ByteArrayOutputStream;
@@ -40,8 +43,6 @@ import java.io.IOException;
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.Utils;
-import gov.nasa.jpl.hi.marsimages.image.ImageCache;
-import gov.nasa.jpl.hi.marsimages.image.ImageFetcher;
 import se.emilsjolander.stickylistheaders.StickyListHeadersListView;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
@@ -56,7 +57,6 @@ public class ImageViewActivity extends ActionBarActivity
     private HackySlidingPaneLayout mSlidingPane;
     private ImagePagerAdapter mAdapter;
     private ViewPager mPager;
-    private ImageFetcher mImageFetcher;
     private ArrayAdapter<CharSequence> mSpinnerAdapter;
     private boolean needToSetViewPagerToPageZeroDueToMissionChange = false;
     private ActionBarHelper mActionBar;
@@ -80,15 +80,6 @@ public class ImageViewActivity extends ActionBarActivity
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
         final int longest = (height > width ? height : width) / 2;
-
-        ImageCache.ImageCacheParams cacheParams =
-                new ImageCache.ImageCacheParams(this, MarsImagesApp.IMAGE_CACHE_DIR);
-        cacheParams.setMemCacheSizePercent(0.25f); // Set memory cache to 25% of app memory
-
-        // The ImageFetcher takes care of loading images into our ImageView children asynchronously
-        mImageFetcher = new ImageFetcher(this, longest);
-        mImageFetcher.addImageCache(getSupportFragmentManager(), cacheParams);
-        mImageFetcher.setImageFadeIn(false);
 
         mSlidingPane = (HackySlidingPaneLayout) findViewById(R.id.main_layout);
 
@@ -214,20 +205,18 @@ public class ImageViewActivity extends ActionBarActivity
     @Override
     public void onResume() {
         super.onResume();
-        mImageFetcher.setExitTasksEarly(false);
+        ImageLoader.getInstance().resume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mImageFetcher.setExitTasksEarly(true);
-        mImageFetcher.flushCache();
+        ImageLoader.getInstance().pause();
     }
 
     @Override
     protected void onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-        mImageFetcher.closeCache();
         super.onDestroy();
     }
 
@@ -264,10 +253,6 @@ public class ImageViewActivity extends ActionBarActivity
                 return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    public ImageFetcher getImageFetcher() {
-        return mImageFetcher;
     }
 
     private void createAboutThisAppActivity() {
@@ -321,7 +306,7 @@ public class ImageViewActivity extends ActionBarActivity
 
     private File saveImageToExternalStorage(Note thisNote, Integer pageNumber) {
         String imageURL = thisNote.getResources().get(0).getAttributes().getSourceURL();
-        MarsImageView imageView = (MarsImageView) mPager.findViewWithTag(getImageViewTag(pageNumber));
+        ImageView imageView = (ImageView) mPager.findViewWithTag(getImageViewTag(pageNumber));
         BitmapDrawable bitmapDrawable = (BitmapDrawable) imageView.getDrawable();
         Bitmap bitmap = bitmapDrawable.getBitmap();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
@@ -410,6 +395,7 @@ public class ImageViewActivity extends ActionBarActivity
             mActionBar = getActionBar();
         }
 
+        @SuppressLint("NewApi")
         @Override
         public void init() {
             mActionBar.setDisplayHomeAsUpEnabled(true);

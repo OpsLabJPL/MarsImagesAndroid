@@ -43,6 +43,7 @@ public class MarsImagesApp extends Application {
 
     @Override
     public void onCreate() {
+        super.onCreate();
         // Create global configuration and initialize ImageLoader with this configuration
         DisplayImageOptions defaultOptions = new DisplayImageOptions.Builder()
                 .cacheInMemory(true)
@@ -53,6 +54,18 @@ public class MarsImagesApp extends Application {
                         .defaultDisplayImageOptions(defaultOptions)
                         .build();
         ImageLoader.getInstance().init(config);
+    }
+
+    @Override
+    public void onLowMemory() {
+        ImageLoader.getInstance().clearMemoryCache();
+        super.onLowMemory();
+    }
+
+    @Override
+    public void onTerminate() {
+        ImageLoader.getInstance().destroy();
+        super.onTerminate();
     }
 
     public Rover getMission() {

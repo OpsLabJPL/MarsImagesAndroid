@@ -25,7 +25,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center" />
 
-    <gov.nasa.jpl.hi.marsimages.ui.MarsImageView
+    <ImageView
         android:id="@+id/imageView"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"

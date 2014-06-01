@@ -4,25 +4,22 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
-import com.google.common.base.Stopwatch;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
-
-import java.util.concurrent.TimeUnit;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.Utils;
-import gov.nasa.jpl.hi.marsimages.image.ImageFetcher;
-import gov.nasa.jpl.hi.marsimages.image.ImageWorker;
 import uk.co.senab.photoview.PhotoViewAttacher;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
@@ -37,7 +34,6 @@ public class ImageViewFragment extends Fragment {
     private boolean reloadImageDueToMissionChange = false;
     private int number;
     private ImageView mImageView;
-    private ImageFetcher mImageFetcher;
     private String imageViewTag;
     private PhotoViewAttacher mAttacher;
 
@@ -97,12 +93,7 @@ public class ImageViewFragment extends Fragment {
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        // Use the parent activity to load the image asynchronously into the ImageView (so a single
-        // cache can be used over all pages in the ViewPager)
-        if (ImageViewActivity.class.isInstance(getActivity())) {
-            mImageFetcher = ((ImageViewActivity) getActivity()).getImageFetcher();
-            mImageFetcher.loadImage(mImageUrl, mImageView, mAttacher);
-        }
+        loadImage(mImageUrl, mImageView, mAttacher);
 
         // Pass clicks on the ImageView to the parent activity to handle
         if (View.OnClickListener.class.isInstance(getActivity()) && Utils.hasHoneycomb()) {
@@ -133,12 +124,25 @@ public class ImageViewFragment extends Fragment {
                     if (EVERNOTE.getNotesCount() > number) {
                         reloadImageDueToMissionChange = false;
                         mImageUrl = EVERNOTE.getNoteUrl(number);
-                        mImageFetcher.loadImage(mImageUrl, mImageView, mAttacher);
+                        loadImage(mImageUrl, mImageView, mAttacher);
                     }
                 }
             }
         }
     };
+
+    private void loadImage(String url, ImageView imageView, final PhotoViewAttacher attacher) {
+        ImageLoader.getInstance().displayImage(url, imageView,
+                new SimpleImageLoadingListener() {
+                    @Override
+                    public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
+                        if (attacher != null) {
+                            attacher.update();
+                        }
+                    }
+                }
+        );
+    }
 
     @Override
     public void onPause() {
@@ -149,7 +153,7 @@ public class ImageViewFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-//        setupPhotoViewAttacher();
+        setupPhotoViewAttacher();
     }
 
     @Override
@@ -158,7 +162,7 @@ public class ImageViewFragment extends Fragment {
         teardownPhotoViewAttacher();
         if (mImageView != null) {
             // Cancel any pending image work
-            ImageWorker.cancelWork(mImageView);
+            ImageLoader.getInstance().cancelDisplayTask(mImageView);
             mImageView.setImageDrawable(null);
         }
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mMessageReceiver);

@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
@@ -19,15 +18,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.nostra13.universalimageloader.core.ImageLoader;
-import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
-
-import java.net.URL;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
-import gov.nasa.jpl.hi.marsimages.image.ImageCache;
-import gov.nasa.jpl.hi.marsimages.image.ImageFetcher;
 import se.emilsjolander.stickylistheaders.StickyListHeadersAdapter;
 import se.emilsjolander.stickylistheaders.StickyListHeadersListView;
 
@@ -55,10 +49,6 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
         mStickyList.setDrawingListUnderStickyHeader(false);
         SwipeRefreshLayout refreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
         refreshLayout.setOnRefreshListener(this);
-
-        ImageCache.ImageCacheParams cacheParams =
-                new ImageCache.ImageCacheParams(getActivity(), MarsImagesApp.IMAGE_CACHE_DIR);
-        cacheParams.setMemCacheSizePercent(0.10f); // Set memory cache to 10% of app memory
 
         IntentFilter filter = new IntentFilter(MarsImagesApp.MISSION_CHANGED);
         filter.addAction(EvernoteMars.END_NOTE_LOADING);
