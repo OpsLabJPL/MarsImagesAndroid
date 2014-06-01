@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
@@ -15,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import com.nostra13.universalimageloader.core.ImageLoader;
@@ -73,11 +75,20 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
                 String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
                 if (!selectionSource.equals(MarsImagesApp.LIST_SOURCE)) {
                     int i = intent.getIntExtra(MarsImagesApp.IMAGE_INDEX, 0);
-                    onItemClick(mStickyList.getWrappedList(), mStickyList.getChildAt(i), i, mAdapter.getItemId(i));
+                    mAdapter.setSelectedPosition(i);
+                    makeSureWeCanSeeItem(i);
                 }
             }
         }
     };
+
+    private void makeSureWeCanSeeItem(int position) {
+        int firstVisiblePosition = mStickyList.getFirstVisiblePosition();
+        int lastVisiblePosition = mStickyList.getLastVisiblePosition();
+        if (position < firstVisiblePosition || position > lastVisiblePosition) {
+            mStickyList.smoothScrollToPosition(position);
+        }
+    }
 
     @Override
     public void onDestroy() {
@@ -92,21 +103,7 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long id) {
-//        for (int j = 0; j < adapterView.getChildCount(); j++) {
-//            View childView = adapterView.getChildAt(j);
-//            if (childView != null) {
-//                childView.setSelected(true);
-//            }
-//        }
-        if (view == null) return;
-
-        view.setSelected(true);
-
-        if (i < mStickyList.getFirstVisiblePosition() ||
-            i > mStickyList.getLastVisiblePosition()) {
-            mStickyList.smoothScrollToPosition(i);
-        }
-
+        mAdapter.setSelectedPosition(i);
         Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
         intent.putExtra(MarsImagesApp.IMAGE_INDEX, i);
         intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.LIST_SOURCE);
@@ -117,10 +114,16 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
 
         private final LayoutInflater inflater;
         private int mItemCount;
+        private int selectedPosition = 0;
 
         public ImageListAdapter(Context context) {
             inflater = LayoutInflater.from(context);
             mItemCount = EVERNOTE.getNotesCount();
+        }
+
+        public void setSelectedPosition(int selectedPosition) {
+            this.selectedPosition = selectedPosition;
+            notifyDataSetChanged();
         }
 
         @Override
@@ -161,18 +164,25 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
         }
 
         @Override
-        public View getView(int i, View view, ViewGroup viewGroup) {
+        public View getView(int i, View recycledView, ViewGroup viewGroup) {
             ViewHolder holder;
-
-            if (view == null) {
+            View view = null;
+            if (recycledView == null) {
                 holder = new ViewHolder();
                 view = inflater.inflate(R.layout.row, viewGroup, false);
                 holder.text = (TextView) view.findViewById(R.id.row_title);
                 holder.imageView = (ImageView)view.findViewById(R.id.row_icon);
                 view.setTag(holder);
             } else {
-                holder = (ViewHolder) view.getTag();
+                holder = (ViewHolder) recycledView.getTag();
                 holder.imageView.setImageDrawable(null);
+                view = recycledView;
+            }
+
+            if (selectedPosition == i) {
+                holder.text.setBackgroundColor(Color.CYAN);
+            } else {
+                holder.text.setBackgroundColor(Color.WHITE);
             }
 
             holder.text.setText(MARS_IMAGES.getMission().getLabelText(EVERNOTE.getNote(i)));

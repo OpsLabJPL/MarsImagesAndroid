@@ -68,18 +68,10 @@ public class ImageViewActivity extends ActionBarActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Fetch screen height and width, to use as our max size when loading images as this
-        // activity runs full screen
-        final DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        final int height = displayMetrics.heightPixels;
-        final int width = displayMetrics.widthPixels;
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
         filter.addAction(MarsImagesApp.IMAGE_SELECTED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
-
-        final int longest = (height > width ? height : width) / 2;
 
         mSlidingPane = (HackySlidingPaneLayout) findViewById(R.id.main_layout);
 
@@ -121,10 +113,6 @@ public class ImageViewActivity extends ActionBarActivity
         if (Utils.hasHoneycomb()) {
             final ActionBar actionBar = getActionBar();
 
-            // Hide title text and set home as up
-//            actionBar.setDisplayShowTitleEnabled(false);
-//            actionBar.setDisplayHomeAsUpEnabled(true);
-
             // Hide and show the ActionBar as the visibility changes
 //            mPager.setOnSystemUiVisibilityChangeListener(
 //                    new View.OnSystemUiVisibilityChangeListener() {
@@ -151,12 +139,17 @@ public class ImageViewActivity extends ActionBarActivity
                 mPager.setCurrentItem(selectedPage);
             }
         }
-//        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-//        getSupportActionBar().setHomeButtonEnabled(true);
 
         mActionBar = createActionBarHelper();
         mActionBar.init();
-        mSlidingPane.setPanelSlideListener(new SliderListener());
+        SliderListener sliderListener = new SliderListener();
+        mSlidingPane.setPanelSlideListener(sliderListener);
+        if (mSlidingPane.isOpen()) {
+            sliderListener.onPanelOpened(null);
+        }
+        else {
+            sliderListener.onPanelClosed(null);
+        }
 
         EVERNOTE.loadMoreNotes(this);
     }
@@ -412,35 +405,27 @@ public class ImageViewActivity extends ActionBarActivity
         @Override
         public void onPanelOpened(View panel) {
             mActionBar.onPanelOpened();
-            ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
-            final DisplayMetrics displayMetrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-            final int width = displayMetrics.widthPixels;
-            layoutParams.width = width - mList.getWidth() + 1;
-            Log.d("new-width", "setting width to "+layoutParams.width);
-            mPager.setLayoutParams(layoutParams);
+            resetLayoutParams(mList.getWidth());
         }
 
         @Override
         public void onPanelClosed(View panel){
             mActionBar.onPanelClosed();
-            ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
-            final DisplayMetrics displayMetrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-            final int width = displayMetrics.widthPixels;
-            layoutParams.width = width + 1;
-            Log.d("new-width", "setting width to "+layoutParams.width);
-            mPager.setLayoutParams(layoutParams);
+            resetLayoutParams(0);
         }
 
         @Override
         public void onPanelSlide(View panel, float slideOffset) {
+            resetLayoutParams((int)(mList.getWidth()*slideOffset));
+        }
+
+        private void resetLayoutParams(int bottomPaneWidth) {
             ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
             final DisplayMetrics displayMetrics = new DisplayMetrics();
             getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
             final int width = displayMetrics.widthPixels;
-            layoutParams.width = width - (int)(mList.getWidth()*slideOffset) + 1;
-            Log.d("new-width", "setting width to "+layoutParams.width);
+            layoutParams.width = width - bottomPaneWidth + 1;
+            Log.d("new-width", "setting width to " + layoutParams.width);
             mPager.setLayoutParams(layoutParams);
         }
     }

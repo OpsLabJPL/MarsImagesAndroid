@@ -10,5 +10,6 @@
     <dimen name="shadow_width">15dp</dimen>
     <dimen name="list_padding">10dp</dimen>
     <dimen name="thumbnail_image_width">50dp</dimen>
+    <dimen name="header_height">25dp</dimen>
 
 </resources>
