@@ -140,6 +140,18 @@ public class EvernoteMars {
        return uriPrefix;
     }
 
+    public String getThumbnailURL(int position, int thumbnailSize) {
+        String thumbnailUrl = null;
+        if (position >= 0 && position < notesArray.size()) {
+            Note note = notesArray.get(position);
+            if (note.getResources().isEmpty())
+                return null;
+            String guid = note.getResources().get(0).getGuid();
+            thumbnailUrl = getUriPrefix()+"thm/res/"+guid+"?size="+thumbnailSize;
+        }
+        return thumbnailUrl;
+    }
+
     private class NoteLoaderTask extends AsyncTask<Object, Void, Void> {
 
         @Override

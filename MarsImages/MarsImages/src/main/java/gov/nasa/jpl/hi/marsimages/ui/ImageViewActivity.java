@@ -1,5 +1,6 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+
 import android.app.ActionBar;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,24 +11,25 @@ import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
+import android.support.v7.app.ActionBarActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import com.evernote.edam.type.Note;
-import com.jeremyfeinstein.slidingmenu.lib.SlidingMenu;
-import com.jeremyfeinstein.slidingmenu.lib.app.SlidingFragmentActivity;
 import com.powellware.marsimages.R;
 
 import java.io.ByteArrayOutputStream;
@@ -40,23 +42,25 @@ import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.Utils;
 import gov.nasa.jpl.hi.marsimages.image.ImageCache;
 import gov.nasa.jpl.hi.marsimages.image.ImageFetcher;
+import se.emilsjolander.stickylistheaders.StickyListHeadersListView;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.VIEW_PAGER_SOURCE;
 
-public class ImageViewActivity extends SlidingFragmentActivity
+public class ImageViewActivity extends ActionBarActivity
         implements ActionBar.OnNavigationListener {
-
-    private static final String IMAGE_CACHE_DIR = "images";
 
     private static final String STATE_PAGE_NUMBER = "page_number";
 
+    private HackySlidingPaneLayout mSlidingPane;
     private ImagePagerAdapter mAdapter;
     private ViewPager mPager;
     private ImageFetcher mImageFetcher;
     private ArrayAdapter<CharSequence> mSpinnerAdapter;
     private boolean needToSetViewPagerToPageZeroDueToMissionChange = false;
-    private ImageListFragment mImageList;
+    private ActionBarHelper mActionBar;
+    private StickyListHeadersListView mList;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -70,21 +74,23 @@ public class ImageViewActivity extends SlidingFragmentActivity
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
         final int height = displayMetrics.heightPixels;
         final int width = displayMetrics.widthPixels;
-
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
+        filter.addAction(MarsImagesApp.IMAGE_SELECTED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
         final int longest = (height > width ? height : width) / 2;
 
         ImageCache.ImageCacheParams cacheParams =
-                new ImageCache.ImageCacheParams(this, IMAGE_CACHE_DIR);
+                new ImageCache.ImageCacheParams(this, MarsImagesApp.IMAGE_CACHE_DIR);
         cacheParams.setMemCacheSizePercent(0.25f); // Set memory cache to 25% of app memory
 
         // The ImageFetcher takes care of loading images into our ImageView children asynchronously
         mImageFetcher = new ImageFetcher(this, longest);
         mImageFetcher.addImageCache(getSupportFragmentManager(), cacheParams);
         mImageFetcher.setImageFadeIn(false);
+
+        mSlidingPane = (HackySlidingPaneLayout) findViewById(R.id.main_layout);
 
         // Set up ViewPager and backing adapter
         mAdapter = new ImagePagerAdapter(getSupportFragmentManager());
@@ -93,28 +99,27 @@ public class ImageViewActivity extends SlidingFragmentActivity
         mPager.setPageMargin((int) getResources().getDimension(R.dimen.horizontal_page_margin));
         mPager.setOffscreenPageLimit(1);
         mPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-            int currentPosition = 0;
-
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
 
-                ImageViewFragment fragmentToShow = (ImageViewFragment)mAdapter.getItem(position);
-                fragmentToShow.onResumeFragment();
+                //send image selected event
+                Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
+                intent.putExtra(MarsImagesApp.IMAGE_INDEX, position);
+                intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.VIEW_PAGER_SOURCE);
+                LocalBroadcastManager.getInstance(ImageViewActivity.this).sendBroadcast(intent);
 
-                ImageViewFragment fragmentToHide = (ImageViewFragment)mAdapter.getItem(position);
-                fragmentToHide.onPauseFragment();
-
-                currentPosition = position;
-
-                int noteCount = EVERNOTE.getNotesCount();
-                if (position >= noteCount - mPager.getOffscreenPageLimit()-1)
+                //try to load more notes when the last image view page is selected
+                int pageCount = mAdapter.getCount();
+                if (position >= pageCount - mPager.getOffscreenPageLimit()-1)
                     EVERNOTE.loadMoreNotes(ImageViewActivity.this);
             }
         });
 
+        mList = (StickyListHeadersListView) findViewById(R.id.image_list_view);
+
         mSpinnerAdapter = ArrayAdapter.createFromResource(this, R.array.missions, android.R.layout.simple_spinner_dropdown_item);
-        getActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+        getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
         getActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
 
         // Set up activity to go full screen
@@ -155,48 +160,12 @@ public class ImageViewActivity extends SlidingFragmentActivity
                 mPager.setCurrentItem(selectedPage);
             }
         }
+//        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+//        getSupportActionBar().setHomeButtonEnabled(true);
 
-        // set the Behind View
-        setBehindContentView(R.layout.menu_frame);
-        if (savedInstanceState == null) {
-            FragmentTransaction t = this.getSupportFragmentManager().beginTransaction();
-            mImageList = new ImageListFragment();
-            t.replace(R.id.menu_frame, mImageList);
-            t.commit();
-        } else {
-            mImageList = (ImageListFragment)this.getSupportFragmentManager().findFragmentById(R.id.menu_frame);
-        }
-
-        // customize the SlidingMenu
-        SlidingMenu sm = getSlidingMenu();
-        sm.setShadowWidthRes(R.dimen.shadow_width);
-        sm.setShadowDrawable(R.drawable.shadow);
-        sm.setBehindOffsetRes(R.dimen.slidingmenu_offset);
-        sm.setFadeDegree(0.35f);
-        sm.setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
-        sm.setBehindWidth(250);
-
-//        getActionBar().setDisplayHomeAsUpEnabled(true);
-
-        mPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
-            @Override
-            public void onPageScrollStateChanged(int arg0) { }
-
-            @Override
-            public void onPageScrolled(int arg0, float arg1, int arg2) { }
-
-            @Override
-            public void onPageSelected(int position) {
-                switch (position) {
-                    case 0:
-                        getSlidingMenu().setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
-                        break;
-                    default:
-                        getSlidingMenu().setTouchModeAbove(SlidingMenu.TOUCHMODE_MARGIN);
-                        break;
-                }
-            }
-        });
+        mActionBar = createActionBarHelper();
+        mActionBar.init();
+        mSlidingPane.setPanelSlideListener(new SliderListener());
 
         EVERNOTE.loadMoreNotes(this);
     }
@@ -231,6 +200,13 @@ public class ImageViewActivity extends SlidingFragmentActivity
                 mAdapter.setCount(0);
                 mAdapter.notifyDataSetChanged();
                 needToSetViewPagerToPageZeroDueToMissionChange = true;
+            }
+            else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
+                Integer imageIndex = intent.getIntExtra(MarsImagesApp.IMAGE_INDEX, 0);
+                String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
+                if (!selectionSource.equals(VIEW_PAGER_SOURCE)) {
+                    mPager.setCurrentItem(imageIndex);
+                }
             }
         }
     };
@@ -276,6 +252,15 @@ public class ImageViewActivity extends SlidingFragmentActivity
                 return true;
             case R.id.save:
                 saveImageToGallery();
+                return true;
+            case android.R.id.home:
+
+                Log.d("home", "Home touched. slidable: "+mSlidingPane.isSlideable());
+
+                if (mSlidingPane.isOpen())
+                    mSlidingPane.closePane();
+                else
+                    mSlidingPane.openPane();
                 return true;
         }
         return super.onOptionsItemSelected(item);
@@ -389,10 +374,88 @@ public class ImageViewActivity extends SlidingFragmentActivity
             String imageUrl = EVERNOTE.getNoteUrl(position);
             return ImageViewFragment.newInstance(imageUrl, ImageViewActivity.getImageViewTag(position));
         }
+    }
+    /**
+     * Create a compatible helper that will manipulate the action bar if
+     * available.
+     */
+    private ActionBarHelper createActionBarHelper() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            return new ActionBarHelperICS();
+        } else {
+            return new ActionBarHelper();
+        }
+    }
+
+    /**
+     * Stub action bar helper; this does nothing.
+     */
+    private class ActionBarHelper {
+        public void init() {
+        }
+
+        public void onPanelClosed() {
+        }
+
+        public void onPanelOpened() {
+        }
+    }
+
+    /**
+     * Action bar helper for use on ICS and newer devices.
+     */
+    private class ActionBarHelperICS extends ActionBarHelper {
+        private final ActionBar mActionBar;
+        ActionBarHelperICS() {
+            mActionBar = getActionBar();
+        }
 
         @Override
-        public void notifyDataSetChanged() {
-            super.notifyDataSetChanged();
+        public void init() {
+            mActionBar.setDisplayHomeAsUpEnabled(true);
+            mActionBar.setHomeButtonEnabled(true);
+        }
+    }
+
+    /**
+     * This panel slide listener updates the action bar accordingly for each
+     * panel state.
+     */
+    private class SliderListener extends
+            HackySlidingPaneLayout.SimplePanelSlideListener {
+        @Override
+        public void onPanelOpened(View panel) {
+            mActionBar.onPanelOpened();
+            ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
+            final DisplayMetrics displayMetrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            final int width = displayMetrics.widthPixels;
+            layoutParams.width = width - mList.getWidth() + 1;
+            Log.d("new-width", "setting width to "+layoutParams.width);
+            mPager.setLayoutParams(layoutParams);
+        }
+
+        @Override
+        public void onPanelClosed(View panel){
+            mActionBar.onPanelClosed();
+            ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
+            final DisplayMetrics displayMetrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            final int width = displayMetrics.widthPixels;
+            layoutParams.width = width + 1;
+            Log.d("new-width", "setting width to "+layoutParams.width);
+            mPager.setLayoutParams(layoutParams);
+        }
+
+        @Override
+        public void onPanelSlide(View panel, float slideOffset) {
+            ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
+            final DisplayMetrics displayMetrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            final int width = displayMetrics.widthPixels;
+            layoutParams.width = width - (int)(mList.getWidth()*slideOffset) + 1;
+            Log.d("new-width", "setting width to "+layoutParams.width);
+            mPager.setLayoutParams(layoutParams);
         }
     }
 }

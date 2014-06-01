@@ -1,5 +1,7 @@
 package gov.nasa.jpl.hi.marsimages.rovers;
 
+import com.evernote.edam.type.Note;
+
 /**
  * Created by mpowell on 4/12/14.
  */
@@ -12,6 +14,12 @@ public abstract class Rover {
     public abstract String getUser();
 
     public abstract String getSortableImageFilename(String sourceURL);
+
+    public abstract String getLabelText(Note note);
+
+    public abstract String getSectionText(Note note);
+
+    public abstract int getSol(Note note);
 
     /**
      * Created by mpowell on 5/3/14.
@@ -28,6 +36,26 @@ public abstract class Rover {
                 return filename.substring(23);
 
             return filename;
+        }
+
+        @Override
+        public String getLabelText(Note note) {
+            return "MER Image"; //TODO
+        }
+
+        @Override
+        public String getSectionText(Note note) {
+            return note.getTitle().substring(0, 9);
+        }
+
+        @Override
+        public int getSol(Note note) {
+            String title = note.getTitle();
+            String tokens[] = title.split(" ");
+            if (tokens.length >= 2) {
+                return Integer.parseInt(tokens[1]);
+            }
+            return 0;
         }
     }
 }

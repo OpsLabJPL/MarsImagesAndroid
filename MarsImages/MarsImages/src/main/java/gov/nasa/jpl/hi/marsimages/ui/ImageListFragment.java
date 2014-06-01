@@ -1,67 +1,214 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.support.v4.app.ListFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Adapter;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.evernote.edam.type.Note;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
 
-import java.util.List;
+import java.net.URL;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
+import gov.nasa.jpl.hi.marsimages.image.ImageCache;
+import gov.nasa.jpl.hi.marsimages.image.ImageFetcher;
+import se.emilsjolander.stickylistheaders.StickyListHeadersAdapter;
+import se.emilsjolander.stickylistheaders.StickyListHeadersListView;
+
+import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
 /**
  * Created by mpowell on 5/27/14.
  */
-public class ImageListFragment extends ListFragment {
+public class ImageListFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener, AdapterView.OnItemClickListener {
 
+    private static final int THUMBNAIL_IMAGE_WIDTH = 50;
+    private StickyListHeadersListView mStickyList;
+    private ImageListAdapter mAdapter;
+
+    public ImageListFragment() {} //empty ctor as per Fragment docs
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.list, null);
+        View view = inflater.inflate(R.layout.image_list_fragment, container, false);
+        mStickyList = (StickyListHeadersListView) view.findViewById(R.id.image_list_view);
+        mStickyList.setOnItemClickListener(this);
+        mAdapter = new ImageListAdapter(this.getActivity());
+        mStickyList.setAdapter(mAdapter);
+        mStickyList.setDrawingListUnderStickyHeader(false);
+        SwipeRefreshLayout refreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
+        refreshLayout.setOnRefreshListener(this);
+
+        ImageCache.ImageCacheParams cacheParams =
+                new ImageCache.ImageCacheParams(getActivity(), MarsImagesApp.IMAGE_CACHE_DIR);
+        cacheParams.setMemCacheSizePercent(0.10f); // Set memory cache to 10% of app memory
+
+        IntentFilter filter = new IntentFilter(MarsImagesApp.MISSION_CHANGED);
+        filter.addAction(EvernoteMars.END_NOTE_LOADING);
+        filter.addAction(MarsImagesApp.IMAGE_SELECTED);
+        LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mMessageReceiver, filter);
+
+        return view;
     }
 
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        ImageListAdapter adapter = new ImageListAdapter(getActivity());
-        for (int i = 0; i < EvernoteMars.EVERNOTE.getNotesCount(); i++) {
-            adapter.add(new ImageItem(i));
+    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
+                mAdapter.setCount(0);
+                mAdapter.notifyDataSetChanged();
+            }
+            else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
+                mAdapter.setCount(EVERNOTE.getNotesCount());
+                mAdapter.notifyDataSetChanged();
+            }
+            else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
+                String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
+                if (!selectionSource.equals(MarsImagesApp.LIST_SOURCE)) {
+                    int i = intent.getIntExtra(MarsImagesApp.IMAGE_INDEX, 0);
+                    onItemClick(mStickyList.getWrappedList(), mStickyList.getChildAt(i), i, mAdapter.getItemId(i));
+                }
+            }
         }
-        setListAdapter(adapter);
+    };
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mMessageReceiver);
     }
 
-    private class ImageItem {
-        private int index;
-        public ImageItem(int index) {
-            this.index = index;
+    @Override
+    public void onRefresh() {
+        Log.d("refresh", "List refreshed, number of items:"+mAdapter.getCount());
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long id) {
+//        for (int j = 0; j < adapterView.getChildCount(); j++) {
+//            View childView = adapterView.getChildAt(j);
+//            if (childView != null) {
+//                childView.setSelected(true);
+//            }
+//        }
+        if (view == null) return;
+
+        view.setSelected(true);
+
+        if (i < mStickyList.getFirstVisiblePosition() ||
+            i > mStickyList.getLastVisiblePosition()) {
+            mStickyList.smoothScrollToPosition(i);
         }
-        public Note getNote() { return EvernoteMars.EVERNOTE.getNote(index); }
+
+        Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
+        intent.putExtra(MarsImagesApp.IMAGE_INDEX, i);
+        intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.LIST_SOURCE);
+        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
     }
 
-    public class ImageListAdapter extends ArrayAdapter<ImageItem> {
+    private class ImageListAdapter extends BaseAdapter implements StickyListHeadersAdapter {
+
+        private final LayoutInflater inflater;
+        private int mItemCount;
 
         public ImageListAdapter(Context context) {
-            super(context, 0);
+            inflater = LayoutInflater.from(context);
+            mItemCount = EVERNOTE.getNotesCount();
         }
 
-        public View getView(int position, View convertView, ViewGroup parent) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(getContext()).inflate(R.layout.row, null);
+        @Override
+        public View getHeaderView(int i, View view, ViewGroup viewGroup) {
+            HeaderViewHolder holder;
+            if (view == null) {
+                holder = new HeaderViewHolder();
+                view = inflater.inflate(R.layout.list_header, viewGroup, false);
+                holder.text = (TextView) view.findViewById(R.id.header_title);
+                view.setTag(holder);
+            } else {
+                holder = (HeaderViewHolder) view.getTag();
             }
-//            ImageView icon = (ImageView) convertView.findViewById(R.id.row_icon);
-//            icon.setImageResource(getItem(position).iconRes);
-
-            TextView title = (TextView) convertView.findViewById(R.id.row_title);
-            title.setText(getItem(position).getNote().getTitle());
-
-            return convertView;
+            //set header text as first char in name
+            String headerText = "Sol "+MARS_IMAGES.getMission().getSol(EVERNOTE.getNote(i));
+            holder.text.setText(headerText);
+            return view;
         }
+
+        @Override
+        public long getHeaderId(int i) {
+            return MARS_IMAGES.getMission().getSol(EVERNOTE.getNote(i));
+        }
+
+        @Override
+        public int getCount() {
+            return mItemCount;
+        }
+
+        @Override
+        public Object getItem(int i) {
+            return EVERNOTE.getNote(i);
+        }
+
+        @Override
+        public long getItemId(int i) {
+            return i;
+        }
+
+        @Override
+        public View getView(int i, View view, ViewGroup viewGroup) {
+            ViewHolder holder;
+
+            if (view == null) {
+                holder = new ViewHolder();
+                view = inflater.inflate(R.layout.row, viewGroup, false);
+                holder.text = (TextView) view.findViewById(R.id.row_title);
+                holder.imageView = (ImageView)view.findViewById(R.id.row_icon);
+                view.setTag(holder);
+            } else {
+                holder = (ViewHolder) view.getTag();
+                holder.imageView.setImageDrawable(null);
+            }
+
+            holder.text.setText(MARS_IMAGES.getMission().getLabelText(EVERNOTE.getNote(i)));
+            String thumbnailURL = EVERNOTE.getThumbnailURL(i, THUMBNAIL_IMAGE_WIDTH);
+            if (thumbnailURL != null) {
+                ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
+            }
+
+            if (i == EVERNOTE.getNotesCount()-1) {
+                EVERNOTE.loadMoreNotes(getActivity());
+            }
+
+            return view;
+        }
+
+        public void setCount(int count) {
+            mItemCount = count;
+        }
+    }
+
+    class HeaderViewHolder {
+        TextView text;
+    }
+
+    class ViewHolder {
+        TextView text;
+        ImageView imageView;
     }
 }

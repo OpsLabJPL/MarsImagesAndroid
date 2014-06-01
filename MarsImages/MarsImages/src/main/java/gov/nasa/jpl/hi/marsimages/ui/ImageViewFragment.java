@@ -69,13 +69,11 @@ public class ImageViewFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        Stopwatch watch = Stopwatch.createStarted();
         // image_detail_fragment.xml contains just an ImageView
         final View v = inflater.inflate(R.layout.image_view_fragment, container, false);
         mImageView = (ImageView) v.findViewById(R.id.imageView);
         mImageView.setTag(imageViewTag);
         setupPhotoViewAttacher();
-        Log.d("onCreateView", "Elapsed time in onCreateView: " + watch.elapsed(TimeUnit.MILLISECONDS) + " ms");
         return v;
     }
 
@@ -97,7 +95,6 @@ public class ImageViewFragment extends Fragment {
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
-        Stopwatch watch = Stopwatch.createStarted();
         super.onActivityCreated(savedInstanceState);
 
         // Use the parent activity to load the image asynchronously into the ImageView (so a single
@@ -116,7 +113,6 @@ public class ImageViewFragment extends Fragment {
         filter.addAction(EvernoteMars.END_NOTE_LOADING);
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mMessageReceiver,
                 filter);
-        Log.d("onActivityCreated", "Elapsed time in onActivityCreated: " + watch.elapsed(TimeUnit.MILLISECONDS) + " ms");
     }
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -166,15 +162,5 @@ public class ImageViewFragment extends Fragment {
             mImageView.setImageDrawable(null);
         }
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mMessageReceiver);
-    }
-
-    public void onResumeFragment() {
-        Log.d("imageview resume", "Image view fragment resumed.");
-//        setupPhotoViewAttacher();
-    }
-
-    public void onPauseFragment() {
-        Log.d("imageview pause", "Image view fragment paused.");
-        teardownPhotoViewAttacher();
     }
 }
