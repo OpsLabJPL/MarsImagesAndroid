@@ -138,7 +138,7 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
                 holder = (HeaderViewHolder) view.getTag();
             }
             //set header text as first char in name
-            String headerText = "Sol "+MARS_IMAGES.getMission().getSol(EVERNOTE.getNote(i));
+            String headerText = MARS_IMAGES.getMission().getSectionText(EVERNOTE.getNote(i));
             holder.text.setText(headerText);
             return view;
         }
@@ -170,7 +170,9 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
             if (recycledView == null) {
                 holder = new ViewHolder();
                 view = inflater.inflate(R.layout.row, viewGroup, false);
+                holder.row = view.findViewById(R.id.list_row);
                 holder.text = (TextView) view.findViewById(R.id.row_title);
+                holder.detail = (TextView) view.findViewById(R.id.row_detail);
                 holder.imageView = (ImageView)view.findViewById(R.id.row_icon);
                 view.setTag(holder);
             } else {
@@ -180,12 +182,13 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
             }
 
             if (selectedPosition == i) {
-                holder.text.setBackgroundColor(Color.CYAN);
+                holder.row.setBackgroundColor(Color.CYAN);
             } else {
-                holder.text.setBackgroundColor(Color.WHITE);
+                holder.row.setBackgroundColor(Color.WHITE);
             }
 
             holder.text.setText(MARS_IMAGES.getMission().getLabelText(EVERNOTE.getNote(i)));
+            holder.detail.setText(MARS_IMAGES.getMission().getDetailText(EVERNOTE.getNote(i)));
             String thumbnailURL = EVERNOTE.getThumbnailURL(i, THUMBNAIL_IMAGE_WIDTH);
             if (thumbnailURL != null) {
                 ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
@@ -208,7 +211,9 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
     }
 
     class ViewHolder {
+        View row;
         TextView text;
+        TextView detail;
         ImageView imageView;
     }
 }

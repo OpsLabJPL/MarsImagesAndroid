@@ -55,8 +55,16 @@ public class Utils {
         return Build.VERSION.SDK_INT >= VERSION_CODES.HONEYCOMB_MR1;
     }
 
+    public static boolean hasIceCreamSandwich() {
+        return Build.VERSION.SDK_INT >= VERSION_CODES.ICE_CREAM_SANDWICH;
+    }
+
     public static boolean hasJellyBean() {
         return Build.VERSION.SDK_INT >= VERSION_CODES.JELLY_BEAN;
+    }
+
+    public static boolean hasJellyBeanMR2() {
+        return Build.VERSION.SDK_INT >= VERSION_CODES.JELLY_BEAN_MR2;
     }
 
     public static boolean hasKitKat() {

@@ -31,4 +31,17 @@
         android:layout_height="fill_parent"
         android:contentDescription="@string/imageview_description" />
 
+    <TextView
+        android:id="@+id/captionView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dip"
+        android:layout_gravity="center_horizontal|bottom"
+
+        android:padding="12dip"
+
+        android:background="#AA000000"
+        android:textColor="#ffffffff"
+
+        android:text="" />
 </FrameLayout>

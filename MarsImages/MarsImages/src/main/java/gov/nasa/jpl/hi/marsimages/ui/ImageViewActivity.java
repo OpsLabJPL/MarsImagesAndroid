@@ -21,12 +21,15 @@ import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.widget.SearchView;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -61,7 +64,10 @@ public class ImageViewActivity extends ActionBarActivity
     private boolean needToSetViewPagerToPageZeroDueToMissionChange = false;
     private ActionBarHelper mActionBar;
     private StickyListHeadersListView mList;
+    private SearchView searchView;
+    private MenuItem mSearchItem;
 
+    @SuppressLint("NewApi")
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Utils.enableStrictMode();
@@ -106,7 +112,7 @@ public class ImageViewActivity extends ActionBarActivity
         getActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
 
         // Set up activity to go full screen
-//        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         // Enable some additional newer visibility and ActionBar features to create a more
         // immersive photo viewing experience
@@ -140,6 +146,10 @@ public class ImageViewActivity extends ActionBarActivity
             }
         }
 
+        if (Utils.hasJellyBeanMR2()) {
+            getActionBar().setHomeAsUpIndicator(
+                    getResources().getDrawable(R.drawable.ic_drawer));
+        }
         mActionBar = createActionBarHelper();
         mActionBar.init();
         SliderListener sliderListener = new SliderListener();
@@ -217,7 +227,45 @@ public class ImageViewActivity extends ActionBarActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.image_view, menu);
-        return true;
+
+        mSearchItem = menu.findItem(R.id.action_search);
+        searchView = (SearchView) mSearchItem.getActionView();
+        searchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
+                @SuppressLint("NewApi")
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if (!hasFocus) {
+                        if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
+                        searchView.setQuery("", false);
+                    }
+                    else {
+                        EvernoteMars.setSearchWords(null, ImageViewActivity.this);
+                        //TODO set current iamge view fragment drawable null, reload image drawable
+                        mPager.setCurrentItem(0);
+                    }
+                }
+            });
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                if (searchView != null) {
+                    searchView.setVisibility(View.INVISIBLE);
+                    searchView.setVisibility(View.VISIBLE);
+                }
+                EVERNOTE.setSearchWords(query, ImageViewActivity.this);
+                return false;
+            }
+            @SuppressLint("NewApi")
+            @Override
+            public boolean onQueryTextChange(String query) {
+                if (query == null || query.isEmpty()) {
+                    EVERNOTE.setSearchWords(null, ImageViewActivity.this);
+                }
+                return false;
+            }
+        });
+        return super.onCreateOptionsMenu(menu);
     }
 
     @Override
@@ -372,10 +420,21 @@ public class ImageViewActivity extends ActionBarActivity
         public void init() {
         }
 
+        @SuppressLint("NewApi")
         public void onPanelClosed() {
+            if (Utils.hasJellyBeanMR2()) {
+                getActionBar().setHomeAsUpIndicator(
+                        getResources().getDrawable(R.drawable.ic_drawer));
+            }
         }
 
+        @SuppressLint("NewApi")
         public void onPanelOpened() {
+            if (Utils.hasJellyBeanMR2()) {
+                getActionBar().setHomeAsUpIndicator(
+                        getResources().getDrawable(R.drawable.abc_ic_ab_back_holo_dark));
+            }
+
         }
     }
 

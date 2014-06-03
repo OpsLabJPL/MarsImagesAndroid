@@ -1,5 +1,7 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -8,11 +10,17 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.ImageView;
+import android.widget.TextView;
 
+import com.evernote.edam.type.Note;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
@@ -23,11 +31,14 @@ import gov.nasa.jpl.hi.marsimages.Utils;
 import uk.co.senab.photoview.PhotoViewAttacher;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
 /**
  * Created by mpowell on 5/4/14.
  */
-public class ImageViewFragment extends Fragment {
+public class ImageViewFragment extends Fragment
+        implements HackyTouchListener, PhotoViewAttacher.OnViewTapListener {
+
     private static final String IMAGE_DATA_EXTRA = "extra_image_data";
 
     private String mImageUrl;
@@ -36,6 +47,9 @@ public class ImageViewFragment extends Fragment {
     private ImageView mImageView;
     private String imageViewTag;
     private PhotoViewAttacher mAttacher;
+    private TextView mCaptionView;
+    private static boolean captionVisible = true;
+    private HackySlidingPaneLayout mLayout;
 
     /**
      * Factory method to generate a new instance of the fragment given an image number.
@@ -65,11 +79,20 @@ public class ImageViewFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // image_detail_fragment.xml contains just an ImageView
         final View v = inflater.inflate(R.layout.image_view_fragment, container, false);
         mImageView = (ImageView) v.findViewById(R.id.imageView);
         mImageView.setTag(imageViewTag);
         setupPhotoViewAttacher();
+        mAttacher.setOnViewTapListener(this);
+
+        mCaptionView = (TextView) v.findViewById(R.id.captionView);
+        Note note = EVERNOTE.getNote(number);
+        String caption = MARS_IMAGES.getMission().getCaptionText(note);
+        mCaptionView.setText(caption);
+        mCaptionView.setAlpha(captionVisible ? 1 : 0);
+        mLayout = (HackySlidingPaneLayout) getActivity().findViewById(R.id.main_layout);
+        mLayout.addHackyTouchListener(this);
+
         return v;
     }
 
@@ -159,12 +182,52 @@ public class ImageViewFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        teardownPhotoViewAttacher();
+        mLayout.removeHackyTouchListener(this);
+        if (mAttacher != null) {
+            mAttacher.setOnPhotoTapListener(null);
+            teardownPhotoViewAttacher();
+        }
         if (mImageView != null) {
             // Cancel any pending image work
             ImageLoader.getInstance().cancelDisplayTask(mImageView);
             mImageView.setImageDrawable(null);
         }
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mMessageReceiver);
+    }
+
+    @Override
+    public void onViewTap(View view, float v, float v2) {
+        if (captionVisible) {
+            captionVisible = false;
+            fadeOutCaptionView(0);
+        } else {
+            captionVisible = true;
+            mCaptionView.setAlpha(1);
+            //schedule a 3 second delay and then animate fade out to zero alpha
+            fadeOutCaptionView(3000);
+        }
+    }
+
+    private void fadeOutCaptionView(int delayMillis) {
+        AlphaAnimation anim = new AlphaAnimation(1.0f, 0.0f);
+        anim.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {}
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mCaptionView.setAlpha(0);
+            }
+            @Override
+            public void onAnimationRepeat(Animation animation) {}
+        });
+        anim.setStartOffset(delayMillis);
+        anim.setDuration(1000);
+        mCaptionView.startAnimation(anim);
+    }
+
+    @Override
+    public void moved() {
+        captionVisible = false;
+        mCaptionView.setAlpha(0);
     }
 }

@@ -89,9 +89,14 @@ public class EvernoteMars {
         public void onReceive(Context context, Intent intent) {
             //intent action: mission changed
             notesArray.clear();
-            EvernoteMars.reloadNotes(context);
+            searchWords = null;
+            EvernoteMars.reloadNotes(context, true); //reset connection for new mission notebook
         }
     };
+
+    public String getSearchWords() {
+        return searchWords;
+    }
 
     public int getNotesCount() {
         return notesArray.size();
@@ -167,8 +172,6 @@ public class EvernoteMars {
             try {
                 if (noteStore == null || userStore == null)
                     connect();
-
-                Log.d("TAG", "Connected to evernote as " + userInfo.getUsername());
             } catch (TTransportException tte) {
                 //FIXME
             } catch (TException te) {
@@ -195,7 +198,6 @@ public class EvernoteMars {
             }
 
             try {
-
                 Intent intent = new Intent(BEGIN_NOTE_LOADING);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 
@@ -203,36 +205,16 @@ public class EvernoteMars {
                 filter.setNotebookGuid(notebookIDs.get(MARS_IMAGES.getMissionName()));
                 filter.setOrder(NoteSortOrder.TITLE.getValue());
                 filter.setAscending(false);
-                if (searchWords != null && searchWords.length()>0) {
+                if (searchWords != null && !searchWords.isEmpty()) {
                     filter.setWords(formatSearch(searchWords));
                 }
                 NoteList notelist = noteStore.findNotes(null, filter, startIndex, NOTE_PAGE_SIZE);
                 notesReturned = notelist.getNotes().size();
 
                 for (Note note : notelist.getNotes()) {
-                  Note orderedNote = reorderResources(note);
-                  notesArray.add(orderedNote);
-
-//                NSNumber* sol = [NSNumber numberWithInt:[self.mission sol:note]];
-//                int lastSolIndex = _sols.count-1;
-//                if (lastSolIndex < 0 || ![[_sols objectAtIndex:lastSolIndex] isEqualToNumber: sol])
-//                [(NSMutableArray*)_sols addObject:sol];
-//                NSMutableArray* notesForSol = [_notes objectForKey:sol];
-//                if (!notesForSol)
-//                    notesForSol = [[NSMutableArray alloc] init];
-//                [notesForSol addObject:note];
-//                [(NSMutableDictionary*)_notes setObject:notesForSol forKey:sol];
-
-//                MarsPhoto* photo = [self getNotePhoto:j+startIndex withIndex:0];
-//                [(NSMutableArray*)_notePhotosArray addObject:photo];
-
-//                [(NSMutableDictionary*)_sections removeObjectForKey:sol];
-//                [(NSMutableDictionary*)_sections setObject:[NSNumber numberWithInt:_sections.count] forKey:sol];
-//                if (_sections.count != _sols.count) {
-//                    NSLog(@"Brown alert: sections and sols counts don't match each other.");
-//                }
+                    Note orderedNote = reorderResources(note);
+                    notesArray.add(orderedNote);
                 }
-
             } catch (EDAMSystemException ese) {
                 //FIXME
             } catch (EDAMNotFoundException enfe) {
@@ -242,44 +224,6 @@ public class EvernoteMars {
             } catch (TException te) {
                 //FIXME
             }
-
-//        EDAMNoteList* notelist = [[EDAMNoteList alloc] init];
-//        @try {
-//            [(NSMutableArray*)_notesArray addObjectsFromArray: notelist.notes];
-//            for (int j = 0; j < notelist.notes.count; j++) {
-//                EDAMNote* note = [notelist.notes objectAtIndex:j];
-//                note = [MarsImageNotebook reorderResources:note];
-//                NSNumber* sol = [NSNumber numberWithInt:[self.mission sol:note]];
-//                int lastSolIndex = _sols.count-1;
-//                if (lastSolIndex < 0 || ![[_sols objectAtIndex:lastSolIndex] isEqualToNumber: sol])
-//                [(NSMutableArray*)_sols addObject:sol];
-//                NSMutableArray* notesForSol = [_notes objectForKey:sol];
-//                if (!notesForSol)
-//                    notesForSol = [[NSMutableArray alloc] init];
-//                [notesForSol addObject:note];
-//                [(NSMutableDictionary*)_notes setObject:notesForSol forKey:sol];
-//                MarsPhoto* photo = [self getNotePhoto:j+startIndex withIndex:0];
-//                [(NSMutableArray*)_notePhotosArray addObject:photo];
-//                [(NSMutableDictionary*)_sections removeObjectForKey:sol];
-//                [(NSMutableDictionary*)_sections setObject:[NSNumber numberWithInt:_sections.count] forKey:sol];
-//                if (_sections.count != _sols.count) {
-//                    NSLog(@"Brown alert: sections and sols counts don't match each other.");
-//                }
-//            }
-
-//            [MarsImageNotebook notifyNotesReturned:notelist.notes.count];
-
-//        } @catch (NSException *e) {
-//            NSLog(@"Exception listing notes: %@ %@", e.name, e.description);
-//            [[Evernote instance] setNoteStore: nil];
-//            dispatch_async(dispatch_get_main_queue(), ^{
-//            if (!_serviceAlert.visible) {
-//                [_serviceAlert show];
-//            }
-//            });
-//            [MarsImageNotebook notifyNotesReturned:0];
-//            return;
-//        }
 
             Intent intent = new Intent(END_NOTE_LOADING);
             intent.putExtra(NUM_NOTES_RETURNED, notesReturned);
@@ -307,31 +251,44 @@ public class EvernoteMars {
     }
 
     private static void reloadNotes(Context context) {
+        reloadNotes(context, false);
+    }
+
+    private static void reloadNotes(Context context, boolean resetConnection) {
         notesArray.clear();
-        EVERNOTE.noteStore = null;
-        EVERNOTE.userStore = null;
-        EVERNOTE.userInfo = null;
-        EVERNOTE.uriPrefix = null;
+        if (resetConnection) {
+            EVERNOTE.noteStore = null;
+            EVERNOTE.userStore = null;
+            EVERNOTE.userInfo = null;
+            EVERNOTE.uriPrefix = null;
+        }
         EVERNOTE.loadMoreNotes(context);
     }
 
+    public static void setSearchWords(String searchWords, Context context) {
+        EvernoteMars.searchWords = searchWords;
+        reloadNotes(context);
+    }
+
     private String formatSearch(String text) {
-//        NSArray* words = [text componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-//        NSMutableString* formattedText = [[NSMutableString alloc] init];
-//        for (NSString* w in words) {
-//            NSString* word = [NSString stringWithString:w];
-//
-//            if ([word intValue] > 0 && ![word hasSuffix:@"*"])
-//            word = [NSString stringWithFormat:@"\"Sol %05d\"", [word intValue]];
-//
-//            if (formattedText.length > 0)
-//            [formattedText appendString:@" "];
-//
-//            [formattedText appendString: [NSString stringWithFormat:@"intitle:%@", word]];
-//        }
-//        NSLog(@"formatted text: %@", formattedText);
-//        return formattedText;
-        return text; //TODO
+        String[] words = text.split("\\s+");
+        StringBuffer formattedText = new StringBuffer();
+        for (String w : words) {
+            String word = w;
+            int value = 0;
+            try { value = Integer.parseInt(word); } catch (NumberFormatException e) {}
+            if (value > 0 && !word.endsWith("*")){
+                word = String.format("\"Sol %05d\"", value);
+            }
+
+            if (formattedText.length() > 0) {
+                formattedText.append(" ");
+            }
+
+            formattedText.append(String.format("intitle:%s",word));
+        }
+        Log.d("search words", "formatted text: "+formattedText);
+        return formattedText.toString();
     }
 
 }

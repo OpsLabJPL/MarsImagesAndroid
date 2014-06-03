@@ -29,9 +29,12 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.google.common.collect.Lists;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by mpowell on 5/30/14.
@@ -676,8 +679,22 @@ public class HackySlidingPaneLayout extends ViewGroup {
         }
     }
 
+    List<HackyTouchListener> hackyTouchListeners = Lists.newArrayList();
+
+    public void addHackyTouchListener(HackyTouchListener touchListener) {
+        hackyTouchListeners.add(touchListener);
+    }
+
+    public void removeHackyTouchListener(HackyTouchListener touchListener) {
+        hackyTouchListeners.remove(touchListener);
+    }
+
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_MOVE) {
+            for (HackyTouchListener listener : hackyTouchListeners) listener.moved();
+        }
+
         try {
             final int action = MotionEventCompat.getActionMasked(ev);
 
