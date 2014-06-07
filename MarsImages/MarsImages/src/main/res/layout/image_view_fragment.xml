@@ -40,13 +40,13 @@
         android:padding="6dip"
         android:background="#AA000000"
         android:textColor="#ffffffff"
-        android:text="Caption"
+        android:text=""
         android:textSize="19dp" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Select"
+        android:text=""
         android:id="@+id/selectImageButton"
         android:layout_gravity="center_horizontal|bottom"
         android:layout_marginBottom="5dip"

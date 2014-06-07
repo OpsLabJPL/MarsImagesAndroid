@@ -26,7 +26,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -61,7 +60,7 @@ public class ImageViewActivity extends ActionBarActivity
     private ImagePagerAdapter mAdapter;
     private ViewPager mPager;
     private ArrayAdapter<CharSequence> mSpinnerAdapter;
-    private boolean needToSetViewPagerToPageZeroDueToMissionChange = false;
+    private boolean needToSetViewPagerToPageZero = false;
     private ActionBarHelper mActionBar;
     private StickyListHeadersListView mList;
     private SearchView searchView;
@@ -77,6 +76,7 @@ public class ImageViewActivity extends ActionBarActivity
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
         filter.addAction(MarsImagesApp.IMAGE_SELECTED);
+        filter.addAction(MarsImagesApp.NOTES_CLEARED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
         mSlidingPane = (HackySlidingPaneLayout) findViewById(R.id.main_layout);
@@ -185,15 +185,16 @@ public class ImageViewActivity extends ActionBarActivity
                 Log.d("receiver", "Notes returned: " + notesReturned);
                 mAdapter.setCount(EVERNOTE.getNotesCount());
                 mAdapter.notifyDataSetChanged();
-                if (needToSetViewPagerToPageZeroDueToMissionChange) {
-                    needToSetViewPagerToPageZeroDueToMissionChange = false;
+                if (needToSetViewPagerToPageZero) {
+                    needToSetViewPagerToPageZero = false;
                     mPager.setCurrentItem(0);
                 }
             }
-            else if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
+            else if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
+                    intent.getAction().equals(MarsImagesApp.NOTES_CLEARED)) {
                 mAdapter.setCount(0);
                 mAdapter.notifyDataSetChanged();
-                needToSetViewPagerToPageZeroDueToMissionChange = true;
+                needToSetViewPagerToPageZero = true;
             }
             else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
                 Integer imageIndex = intent.getIntExtra(MarsImagesApp.IMAGE_INDEX, 0);
@@ -239,8 +240,8 @@ public class ImageViewActivity extends ActionBarActivity
                         searchView.setQuery("", false);
                     }
                     else {
-                        EvernoteMars.setSearchWords(null, ImageViewActivity.this);
-                        //TODO set current iamge view fragment drawable null, reload image drawable
+                        EVERNOTE.setSearchWords(null, ImageViewActivity.this);
+                        //TODO set current image view fragment drawable null, reload image drawable
                         mPager.setCurrentItem(0);
                     }
                 }
@@ -253,7 +254,10 @@ public class ImageViewActivity extends ActionBarActivity
                     searchView.setVisibility(View.INVISIBLE);
                     searchView.setVisibility(View.VISIBLE);
                 }
+                Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
+                LocalBroadcastManager.getInstance(ImageViewActivity.this).sendBroadcast(intent);
                 EVERNOTE.setSearchWords(query, ImageViewActivity.this);
+                Log.d("search query", "user entered query "+query);
                 return false;
             }
             @SuppressLint("NewApi")

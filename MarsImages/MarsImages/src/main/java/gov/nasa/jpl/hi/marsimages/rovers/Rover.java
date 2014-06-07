@@ -108,6 +108,7 @@ public abstract class Rover {
 
         @Override
         public String getCaptionText(Note note) {
+            if (note == null) return "";
             MERTitle title = tokenize(note.getTitle());
             if (title.distance == 0.0f)
                 return String.format("%s image taken on Sol %d.", title.instrumentName, title.sol);
@@ -117,6 +118,7 @@ public abstract class Rover {
 
         @Override
         public String getLabelText(Note note) {
+            if (note == null) return "";
             MERTitle merTitle = tokenize(note.getTitle());
             if (merTitle.distance == 0f)
                 return merTitle.instrumentName;
@@ -126,12 +128,14 @@ public abstract class Rover {
 
         @Override
         public String getDetailText(Note note) {
+            if (note == null) return "";
             String marstime = tokenize(note.getTitle()).marsLocalTime;
             return (marstime != null) ? marstime+" LST" : "";
         }
 
         @Override
         public int getSol(Note note) {
+            if (note == null) return 0;
             String title = note.getTitle();
             String tokens[] = title.split(" ");
             if (tokens.length >= 2) {
@@ -276,7 +280,7 @@ public abstract class Rover {
         }
 
         public String[] stereoForImages(Note note) {
-            if (note.getResources().size() == 0)
+            if (note == null || note.getResources().size() == 0)
                 return new String[0];
             String imageid = getImageID(note.getResources().get(0));
             String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);

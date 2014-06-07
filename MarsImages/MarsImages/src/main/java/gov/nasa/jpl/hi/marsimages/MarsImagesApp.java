@@ -23,6 +23,7 @@ import gov.nasa.jpl.hi.marsimages.rovers.Spirit;
 public class MarsImagesApp extends Application {
 
     public static final String IMAGE_CACHE_DIR = "images";
+    public static final String NOTES_CLEARED = "notesCleared";
     public static MarsImagesApp MARS_IMAGES;
     public static final String MISSION_CHANGED = "missionChanged";
     public static final String IMAGE_SELECTED = "imageSelected";

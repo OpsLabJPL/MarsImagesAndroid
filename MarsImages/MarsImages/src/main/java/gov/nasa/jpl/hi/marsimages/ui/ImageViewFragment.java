@@ -1,7 +1,5 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,11 +15,9 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
@@ -35,8 +31,6 @@ import com.evernote.edam.type.Note;
 import com.evernote.edam.type.Resource;
 import com.google.common.collect.Lists;
 import com.nostra13.universalimageloader.core.ImageLoader;
-import com.nostra13.universalimageloader.core.assist.FailReason;
-import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
 
@@ -59,7 +53,7 @@ public class ImageViewFragment extends Fragment
     private static final String IMAGE_DATA_EXTRA = "extra_image_data";
 
     private String mImageUrl;
-    private boolean reloadImageDueToMissionChange = false;
+    private boolean reloadImageDueToResultsChange = false;
     private int number;
     private ImageView mImageView;
     private String imageViewTag;
@@ -115,14 +109,25 @@ public class ImageViewFragment extends Fragment
         mAttacher.setOnViewTapListener(this);
 
         mCaptionView = (TextView) v.findViewById(R.id.captionView);
-        final Note note = EVERNOTE.getNote(number);
-        String caption = MARS_IMAGES.getMission().getCaptionText(note);
-        mCaptionView.setText(caption);
-        mCaptionView.setAlpha(captionVisible ? 1 : 0);
+        mSelectButton = (Button) v.findViewById(R.id.selectImageButton);
         mLayout = (HackySlidingPaneLayout) getActivity().findViewById(R.id.main_layout);
         mLayout.addHackyTouchListener(this);
 
-        mSelectButton = (Button) v.findViewById(R.id.selectImageButton);
+        final Note note = EVERNOTE.getNote(number);
+        if (note != null) {
+            setupCaptionAndImageSelectionMenu(note);
+        }
+
+        return v;
+    }
+
+    private void setupCaptionAndImageSelectionMenu(final Note note) {
+        mCaptionView.setAlpha(captionVisible ? 1 : 0);
+        mSelectButton.setAlpha(captionVisible ? 1 : 0);
+
+        String caption = MARS_IMAGES.getMission().getCaptionText(note);
+        mCaptionView.setText(caption);
+
         if (note.getResources().size() <= 1)
             mSelectButton.setVisibility(View.INVISIBLE);
         else {
@@ -166,7 +171,6 @@ public class ImageViewFragment extends Fragment
                 }
             });
         }
-        return v;
     }
 
     private void loadAnaglyph(final String[] leftAndRight, final ImageView mImageView, final PhotoViewAttacher mAttacher) {
@@ -217,6 +221,7 @@ public class ImageViewFragment extends Fragment
 
         IntentFilter filter = new IntentFilter(MarsImagesApp.MISSION_CHANGED);
         filter.addAction(EvernoteMars.END_NOTE_LOADING);
+        filter.addAction(MarsImagesApp.NOTES_CLEARED);
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mMessageReceiver,
                 filter);
     }
@@ -225,19 +230,20 @@ public class ImageViewFragment extends Fragment
         @Override
         public void onReceive(Context context, Intent intent) {
             //intent action: mission changed
-            if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
+            if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
+                    intent.getAction().equals((MarsImagesApp.NOTES_CLEARED))) {
                 if (mImageView != null) {
                     mImageView.setImageDrawable(null);
-                    reloadImageDueToMissionChange = true;
+                    reloadImageDueToResultsChange = true;
                     if (mAttacher != null) {
                         mAttacher.update();
                     }
                 }
             }
             else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
-                if (reloadImageDueToMissionChange) {
+                if (reloadImageDueToResultsChange) {
                     if (EVERNOTE.getNotesCount() > number) {
-                        reloadImageDueToMissionChange = false;
+                        reloadImageDueToResultsChange = false;
                         mImageUrl = EVERNOTE.getNoteUrl(number);
                         loadImage(mImageUrl, mImageView, mAttacher);
                     }
@@ -253,6 +259,10 @@ public class ImageViewFragment extends Fragment
                     public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
                         if (attacher != null) {
                             attacher.update();
+                        }
+                        final Note note = EVERNOTE.getNote(number);
+                        if (note != null) {
+                            setupCaptionAndImageSelectionMenu(note);
                         }
                     }
                 }
@@ -295,6 +305,7 @@ public class ImageViewFragment extends Fragment
         } else {
             captionVisible = true;
             mCaptionView.setAlpha(1);
+            mSelectButton.setAlpha(1);
             //schedule a 3 second delay and then animate fade out to zero alpha
             fadeOutCaptionView(3000);
         }
@@ -308,6 +319,7 @@ public class ImageViewFragment extends Fragment
             @Override
             public void onAnimationEnd(Animation animation) {
                 mCaptionView.setAlpha(0);
+                mSelectButton.setAlpha(0);
             }
             @Override
             public void onAnimationRepeat(Animation animation) {}
@@ -315,12 +327,14 @@ public class ImageViewFragment extends Fragment
         anim.setStartOffset(delayMillis);
         anim.setDuration(1000);
         mCaptionView.startAnimation(anim);
+        mSelectButton.startAnimation(anim);
     }
 
     @Override
     public void moved() {
         captionVisible = false;
         mCaptionView.setAlpha(0);
+        mSelectButton.setAlpha(0);
     }
 
     public Bitmap overlayImages(Bitmap left, Bitmap right) {

@@ -14,11 +14,11 @@ import com.evernote.edam.error.EDAMUserException;
 import com.evernote.edam.notestore.NoteFilter;
 import com.evernote.edam.notestore.NoteList;
 import com.evernote.edam.notestore.NoteStore;
+import com.evernote.edam.type.Note;
 import com.evernote.edam.type.NoteSortOrder;
 import com.evernote.edam.type.Resource;
 import com.evernote.edam.userstore.PublicUserInfo;
 import com.evernote.edam.userstore.UserStore;
-import com.evernote.edam.type.Note;
 import com.evernote.thrift.TException;
 import com.evernote.thrift.protocol.TBinaryProtocol;
 import com.evernote.thrift.transport.THttpClient;
@@ -27,17 +27,12 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import gov.nasa.jpl.hi.marsimages.rovers.Curiosity;
-import gov.nasa.jpl.hi.marsimages.rovers.Opportunity;
 import gov.nasa.jpl.hi.marsimages.rovers.Rover;
-import gov.nasa.jpl.hi.marsimages.rovers.Spirit;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
@@ -88,15 +83,10 @@ public class EvernoteMars {
         @Override
         public void onReceive(Context context, Intent intent) {
             //intent action: mission changed
-            notesArray.clear();
             searchWords = null;
             EvernoteMars.reloadNotes(context, true); //reset connection for new mission notebook
         }
     };
-
-    public String getSearchWords() {
-        return searchWords;
-    }
 
     public int getNotesCount() {
         return notesArray.size();
@@ -110,7 +100,11 @@ public class EvernoteMars {
     }
 
     public void loadMoreNotes(Context context) {
-        new NoteLoaderTask().execute(context, notesArray.size());
+        loadMoreNotes(context, false);
+    }
+
+    public void loadMoreNotes(Context context, boolean clearNotes) {
+        new NoteLoaderTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, context, getNotesCount(), clearNotes);
     }
 
     private void connect() throws TException, EDAMSystemException, EDAMUserException, EDAMNotFoundException {
@@ -161,11 +155,17 @@ public class EvernoteMars {
 
         @Override
         protected Void doInBackground(Object... params) {
-            if (!(params[0] instanceof Context) && (params[1] instanceof Integer)) {
+            if (!(params[0] instanceof Context) || !(params[1] instanceof Integer) || !(params[2] instanceof Boolean)) {
                 Log.e(getClass().toString(), "Unexpected input parameters");
             }
             Context context = (Context)params[0];
             Integer startIndex = (Integer)params[1];
+            Boolean clearNotes = (Boolean)params[2];
+
+            if (clearNotes) {
+                notesArray.clear();
+                startIndex = 0;
+            }
 
             int notesReturned = 0;
 
@@ -250,24 +250,23 @@ public class EvernoteMars {
         return note;
     }
 
-    private static void reloadNotes(Context context) {
+    public static void reloadNotes(Context context) {
         reloadNotes(context, false);
     }
 
     private static void reloadNotes(Context context, boolean resetConnection) {
-        notesArray.clear();
         if (resetConnection) {
             EVERNOTE.noteStore = null;
             EVERNOTE.userStore = null;
             EVERNOTE.userInfo = null;
             EVERNOTE.uriPrefix = null;
         }
-        EVERNOTE.loadMoreNotes(context);
+        EVERNOTE.loadMoreNotes(context, true);
     }
 
     public static void setSearchWords(String searchWords, Context context) {
-        EvernoteMars.searchWords = searchWords;
-        reloadNotes(context);
+        EVERNOTE.searchWords = searchWords;
+        EVERNOTE.reloadNotes(context);
     }
 
     private String formatSearch(String text) {

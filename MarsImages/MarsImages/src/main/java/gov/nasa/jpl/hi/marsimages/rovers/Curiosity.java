@@ -43,18 +43,21 @@ public class Curiosity extends Rover {
 
     @Override
     public String getLabelText(Note note) {
+        if (note == null) return "";
         Title mslTitle = tokenize(note.getTitle());
         return mslTitle.instrumentName;
     }
 
     @Override
     public String getDetailText(Note note) {
+        if (note == null) return "";
         String marstime = tokenize(note.getTitle()).marsLocalTime;
         return (marstime != null) ? marstime+" LST" : "";
     }
 
     @Override
     public String getCaptionText(Note note) {
+        if (note == null) return "";
         Title title = tokenize(note.getTitle());
         return String.format("%s image taken on Sol %d.", title.instrumentName, title.sol);
     }
@@ -76,7 +79,7 @@ public class Curiosity extends Rover {
 
     @Override
     public String[] stereoForImages(Note note) {
-        if (note.getResources().size() == 0)
+        if (note == null || note.getResources().size() == 0)
             return new String[0];
         String imageid = getImageID(note.getResources().get(0));
         String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
@@ -106,6 +109,7 @@ public class Curiosity extends Rover {
 
     @Override
     public int getSol(Note note) {
+        if (note == null) return 0;
         String title = note.getTitle();
         String tokens[] = title.split(" ");
         if (tokens.length >= 2) {
