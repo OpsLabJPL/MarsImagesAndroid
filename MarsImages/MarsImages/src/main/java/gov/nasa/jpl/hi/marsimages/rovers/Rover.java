@@ -3,12 +3,15 @@ package gov.nasa.jpl.hi.marsimages.rovers;
 import android.util.Log;
 
 import com.evernote.edam.type.Note;
+import com.evernote.edam.type.Resource;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created by mpowell on 4/12/14.
@@ -26,6 +29,12 @@ public abstract class Rover {
     public static final double EARTH_SECS_PER_MARS_SEC = 1.027491252;
     private static final DateFormat DATE_FORMAT = SimpleDateFormat.getDateInstance();
     protected static final String EPOCH_FORMAT = "yyyyMMddhh:mm:sszzz";
+
+    public int instrumentIndex;
+    public int eyeIndex;
+    public int sampleTypeIndex;
+
+    public Set<String> stereoInstruments = new HashSet<String>();
 
     public abstract String getUser();
 
@@ -51,6 +60,18 @@ public abstract class Rover {
     public abstract String getDetailText(Note note);
 
     public abstract String getCaptionText(Note note);
+
+    public abstract String getImageName(Resource resource);
+
+    public String getImageID(Resource resource) {
+        String url = resource.getAttributes().getSourceURL();
+        String[] tokens = url.split("[\\./]");
+        int numTokens = tokens.length;
+        String imageid = tokens[numTokens-2];
+        return imageid;
+    }
+
+    public abstract String[] stereoForImages(Note note);
 
     /**
      * Created by mpowell on 5/3/14.
@@ -233,5 +254,53 @@ public abstract class Rover {
             return mer;
         }
 
+        @Override
+        public String getImageName(Resource resource) {
+            String imageid = getImageID(resource);
+
+            if (resource.getAttributes().getSourceURL().indexOf("False") != -1)
+                return "Color";
+
+            String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
+            if (instrument.equals("N") || instrument.equals("F") || instrument.equals("R")) {
+                String eye = imageid.substring(eyeIndex, eyeIndex+1);
+                if (eye.equals("L"))
+                    return "Left";
+                else
+                    return "Right";
+            } else if (instrument.equals("P")) {
+                return imageid.substring(eyeIndex, eyeIndex+2);
+            }
+
+            return "";
+        }
+
+        public String[] stereoForImages(Note note) {
+            if (note.getResources().size() == 0)
+                return new String[0];
+            String imageid = getImageID(note.getResources().get(0));
+            String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
+            if (!stereoInstruments.contains(instrument) && !imageid.startsWith("Sol"))
+                return new String[0];
+
+            int leftImageIndex = -1;
+            int rightImageIndex = -1;
+            int index = 0;
+            for (Resource resource : note.getResources()) {
+                imageid = getImageID(resource);
+                String eye = imageid.substring(eyeIndex, eyeIndex+1);
+                if (leftImageIndex == -1 && eye.equals("L") && !imageid.startsWith("Sol"))
+                    leftImageIndex = index;
+                if (rightImageIndex == -1 && eye.equals("R"))
+                    rightImageIndex = index;
+                index += 1;
+            }
+            if (leftImageIndex >= 0 && rightImageIndex >= 0) {
+                return new String[] {
+                        note.getResources().get(leftImageIndex).getAttributes().getSourceURL(),
+                        note.getResources().get(rightImageIndex).getAttributes().getSourceURL() };
+            }
+            return new String[0];
+        }
     }
 }

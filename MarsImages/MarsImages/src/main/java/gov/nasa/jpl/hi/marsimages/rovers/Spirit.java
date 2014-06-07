@@ -2,6 +2,7 @@ package gov.nasa.jpl.hi.marsimages.rovers;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 
 import gov.nasa.jpl.hi.marsimages.rovers.Rover;
@@ -10,6 +11,13 @@ import gov.nasa.jpl.hi.marsimages.rovers.Rover;
  * Created by mpowell on 5/3/14.
  */
 public class Spirit extends Rover.MER {
+
+    public Spirit() {
+        eyeIndex = 23;
+        instrumentIndex = 1;
+        sampleTypeIndex = 12;
+        stereoInstruments.addAll(Arrays.asList(new String[]{"F", "R", "N", "P"}));
+    }
 
     @Override
     public String getUser() {

@@ -7,23 +7,40 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import com.evernote.edam.type.Note;
+import com.evernote.edam.type.Resource;
+import com.google.common.collect.Lists;
 import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.assist.FailReason;
+import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
+
+import java.util.List;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
@@ -50,6 +67,18 @@ public class ImageViewFragment extends Fragment
     private TextView mCaptionView;
     private static boolean captionVisible = true;
     private HackySlidingPaneLayout mLayout;
+    private Button mSelectButton;
+    private PorterDuffXfermode mXferMode = new PorterDuffXfermode(PorterDuff.Mode.LIGHTEN);
+    private static final ColorMatrix redMatrix = new ColorMatrix(new float[] {
+            1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f });
+    private static final ColorMatrixColorFilter redFilter = new ColorMatrixColorFilter(
+            redMatrix);
+    private static final ColorMatrix blueMatrix = new ColorMatrix(new float[] {
+            0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f });
+    private static final ColorMatrixColorFilter blueFilter = new ColorMatrixColorFilter(
+            blueMatrix);
 
     /**
      * Factory method to generate a new instance of the fragment given an image number.
@@ -86,14 +115,77 @@ public class ImageViewFragment extends Fragment
         mAttacher.setOnViewTapListener(this);
 
         mCaptionView = (TextView) v.findViewById(R.id.captionView);
-        Note note = EVERNOTE.getNote(number);
+        final Note note = EVERNOTE.getNote(number);
         String caption = MARS_IMAGES.getMission().getCaptionText(note);
         mCaptionView.setText(caption);
         mCaptionView.setAlpha(captionVisible ? 1 : 0);
         mLayout = (HackySlidingPaneLayout) getActivity().findViewById(R.id.main_layout);
         mLayout.addHackyTouchListener(this);
 
+        mSelectButton = (Button) v.findViewById(R.id.selectImageButton);
+        if (note.getResources().size() <= 1)
+            mSelectButton.setVisibility(View.INVISIBLE);
+        else {
+            mSelectButton.setText(MARS_IMAGES.getMission().getImageName(note.getResources().get(0)));
+            final List<String> menuItemNames = Lists.newArrayList();
+            for (Resource resource : note.getResources()) {
+                String imageName = MARS_IMAGES.getMission().getImageName(resource);
+                menuItemNames.add(imageName);
+            }
+
+            final String[] leftAndRight = MARS_IMAGES.getMission().stereoForImages(note);
+            if (leftAndRight.length > 0) {
+                menuItemNames.add("Anaglyph");
+            }
+
+            mSelectButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    final PopupMenu mPopupMenu = new PopupMenu(getActivity(), mSelectButton);
+                    for (String menuItemName : menuItemNames) {
+                        mPopupMenu.getMenu().add(Menu.NONE, menuItemNames.indexOf(menuItemName), Menu.NONE, menuItemName);
+                    }
+                    mPopupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem menuItem) {
+                            mSelectButton.setText(menuItem.getTitle());
+                            int resourceNumber = menuItem.getItemId();
+                            if (resourceNumber < note.getResources().size()) {
+                                String url = note.getResources().get(resourceNumber).getAttributes().getSourceURL();
+                                mImageView.setImageDrawable(null);
+                                loadImage(url, mImageView, mAttacher);
+                            }
+                            else { //anaglyph
+                                mImageView.setImageDrawable(null);
+                                loadAnaglyph(leftAndRight, mImageView, mAttacher);
+                            }
+                            return false;
+                        }
+                    });
+                    mPopupMenu.show();
+                }
+            });
+        }
         return v;
+    }
+
+    private void loadAnaglyph(final String[] leftAndRight, final ImageView mImageView, final PhotoViewAttacher mAttacher) {
+        ImageLoader.getInstance().loadImage(leftAndRight[0], new SimpleImageLoadingListener() {
+            @Override
+            public void onLoadingComplete(String url, View view, Bitmap bitmap) {
+                final Bitmap leftBitmap = bitmap;
+                ImageLoader.getInstance().loadImage(leftAndRight[1], new SimpleImageLoadingListener() {
+                    @Override
+                    public void onLoadingComplete(String url, View view, Bitmap bitmap) {
+                        final Bitmap rightBitmap = bitmap;
+                        BitmapDrawable anaglyphImage = new BitmapDrawable(getActivity().getResources(),
+                                overlayImages(leftBitmap, rightBitmap).copy(Bitmap.Config.ARGB_8888, false));
+                        mImageView.setImageDrawable(anaglyphImage);
+                        mAttacher.update();
+                    }
+                });
+            }
+        });
     }
 
     private void setupPhotoViewAttacher() {
@@ -230,4 +322,22 @@ public class ImageViewFragment extends Fragment
         captionVisible = false;
         mCaptionView.setAlpha(0);
     }
+
+    public Bitmap overlayImages(Bitmap left, Bitmap right) {
+        Bitmap bmOverlay = Bitmap.createBitmap(left.getWidth(),
+                left.getHeight(), left.getConfig());
+
+        Canvas canvas = new Canvas(bmOverlay);
+        Paint paint = new Paint();
+        paint.setColorFilter(redFilter);
+        canvas.drawBitmap(
+                left.copy(left.getConfig(), true), 0,
+                0, paint);
+        paint.setColorFilter(blueFilter);
+        paint.setXfermode(mXferMode);
+        canvas.drawBitmap(right.copy(right.getConfig(), true), 0, 0, paint);
+
+        return bmOverlay;
+    }
+
 }

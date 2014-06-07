@@ -35,13 +35,24 @@
         android:id="@+id/captionView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dip"
+        android:layout_marginBottom="55dip"
         android:layout_gravity="center_horizontal|bottom"
-
-        android:padding="12dip"
-
+        android:padding="6dip"
         android:background="#AA000000"
         android:textColor="#ffffffff"
+        android:text="Caption"
+        android:textSize="19dp" />
 
-        android:text="" />
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Select"
+        android:id="@+id/selectImageButton"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="5dip"
+        android:background="#AA000000"
+        android:padding="6dip"
+        android:textColor="#ffffffff"
+        />
+
 </FrameLayout>

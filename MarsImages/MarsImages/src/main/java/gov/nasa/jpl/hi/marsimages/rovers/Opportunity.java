@@ -4,12 +4,20 @@ import com.evernote.edam.type.Note;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 
 /**
  * Created by mpowell on 5/3/14.
  */
 public class Opportunity extends Rover.MER {
+
+    public Opportunity() {
+        eyeIndex = 23;
+        instrumentIndex = 1;
+        sampleTypeIndex = 12;
+        stereoInstruments.addAll(Arrays.asList(new String[]{"F", "R", "N", "P"}));
+    }
 
     @Override
     public String getUser() {

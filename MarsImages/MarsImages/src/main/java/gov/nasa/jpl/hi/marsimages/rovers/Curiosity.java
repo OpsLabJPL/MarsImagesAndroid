@@ -3,9 +3,11 @@ package gov.nasa.jpl.hi.marsimages.rovers;
 import android.util.Log;
 
 import com.evernote.edam.type.Note;
+import com.evernote.edam.type.Resource;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 
 /**
@@ -20,6 +22,13 @@ public class Curiosity extends Rover {
         INSTRUMENT_NAME,
         MARS_LOCAL_TIME,
         ROVER_MOTION_COUNTER
+    }
+
+    public Curiosity() {
+        eyeIndex = 1;
+        instrumentIndex = 0;
+        sampleTypeIndex = 17;
+        stereoInstruments.addAll(Arrays.asList(new String[] {"F", "R", "N"}));
     }
 
     public String getUser() {
@@ -48,6 +57,51 @@ public class Curiosity extends Rover {
     public String getCaptionText(Note note) {
         Title title = tokenize(note.getTitle());
         return String.format("%s image taken on Sol %d.", title.instrumentName, title.sol);
+    }
+
+    @Override
+    public String getImageName(Resource resource) {
+        String imageid = getImageID(resource);
+        String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
+        if (instrument.equals("N") || instrument.equals("F") || instrument.equals("R")) {
+            String eye = imageid.substring(eyeIndex, eyeIndex+1);
+            if (eye.equals("L"))
+                return "Left";
+            else
+                return "Right";
+        }
+
+        return "";
+    }
+
+    @Override
+    public String[] stereoForImages(Note note) {
+        if (note.getResources().size() == 0)
+            return new String[0];
+        String imageid = getImageID(note.getResources().get(0));
+        String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
+        if (!stereoInstruments.contains(instrument))
+            return new String[0];
+
+        int leftImageIndex = -1;
+        int rightImageIndex = -1;
+        int index = 0;
+        for (Resource resource : note.getResources()) {
+            imageid = getImageID(resource);
+            String eye = imageid.substring(eyeIndex, eyeIndex+1);
+            if (leftImageIndex == -1 && eye.equals("L"))
+                leftImageIndex = index;
+            if (rightImageIndex == -1 && eye.equals("R"))
+                rightImageIndex = index;
+            index += 1;
+        }
+        if (leftImageIndex >= 0 && rightImageIndex >= 0) {
+            return new String[] {
+                    note.getResources().get(leftImageIndex).getAttributes().getSourceURL(),
+                    note.getResources().get(rightImageIndex).getAttributes().getSourceURL()
+            };
+        }
+        return new String[0];
     }
 
     @Override
