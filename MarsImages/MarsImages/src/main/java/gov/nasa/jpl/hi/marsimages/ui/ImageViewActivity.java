@@ -69,7 +69,7 @@ public class ImageViewActivity extends ActionBarActivity
     @SuppressLint("NewApi")
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Utils.enableStrictMode();
+//        Utils.enableStrictMode();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -209,13 +209,17 @@ public class ImageViewActivity extends ActionBarActivity
     @Override
     public void onResume() {
         super.onResume();
+        long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
         ImageLoader.getInstance().resume();
+        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30*60*1000)
+            EVERNOTE.loadMoreNotes(this, true);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         ImageLoader.getInstance().pause();
+        MARS_IMAGES.setPauseTimestamp(System.currentTimeMillis());
     }
 
     @Override
@@ -241,7 +245,6 @@ public class ImageViewActivity extends ActionBarActivity
                     }
                     else {
                         EVERNOTE.setSearchWords(null, ImageViewActivity.this);
-                        //TODO set current image view fragment drawable null, reload image drawable
                         mPager.setCurrentItem(0);
                     }
                 }
@@ -274,9 +277,6 @@ public class ImageViewActivity extends ActionBarActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
             case R.id.about:
                 createAboutThisAppActivity();
@@ -288,9 +288,7 @@ public class ImageViewActivity extends ActionBarActivity
                 saveImageToGallery();
                 return true;
             case android.R.id.home:
-
                 Log.d("home", "Home touched. slidable: "+mSlidingPane.isSlideable());
-
                 if (mSlidingPane.isOpen())
                     mSlidingPane.closePane();
                 else

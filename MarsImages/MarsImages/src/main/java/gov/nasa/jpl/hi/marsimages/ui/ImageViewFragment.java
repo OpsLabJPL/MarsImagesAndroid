@@ -51,10 +51,14 @@ public class ImageViewFragment extends Fragment
         implements HackyTouchListener, PhotoViewAttacher.OnViewTapListener {
 
     private static final String IMAGE_DATA_EXTRA = "extra_image_data";
+    public static final String ANAGLYPH = "Anaglyph";
+    private static final String STATE_IMAGE_NUMBER = "image_number";
+    private static final String STATE_RESOURCE_NUMBER = "resource_number";
 
     private String mImageUrl;
     private boolean reloadImageDueToResultsChange = false;
-    private int number;
+    private int imageNumber;
+    private int resourceNumber;
     private ImageView mImageView;
     private String imageViewTag;
     private PhotoViewAttacher mAttacher;
@@ -73,9 +77,11 @@ public class ImageViewFragment extends Fragment
             0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f });
     private static final ColorMatrixColorFilter blueFilter = new ColorMatrixColorFilter(
             blueMatrix);
+    private PopupMenu.OnMenuItemClickListener menuItemClickListener;
+    private PopupMenu mPopupMenu;
 
     /**
-     * Factory method to generate a new instance of the fragment given an image number.
+     * Factory method to generate a new instance of the fragment given an image imageNumber.
      *
      * @param imageUrl The image url to load
      * @return A new instance of ImageDetailFragment with imageNum extras
@@ -83,7 +89,7 @@ public class ImageViewFragment extends Fragment
     public static ImageViewFragment newInstance(String imageUrl, String imageViewTag) {
         final ImageViewFragment f = new ImageViewFragment();
         final Bundle args = new Bundle();
-        f.number = ImageViewActivity.getImageViewFragmentNumber(imageViewTag);
+        f.imageNumber = ImageViewActivity.getImageViewFragmentNumber(imageViewTag);
         args.putString(IMAGE_DATA_EXTRA, imageUrl);
         f.setArguments(args);
         f.imageViewTag = imageViewTag;
@@ -97,6 +103,13 @@ public class ImageViewFragment extends Fragment
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mImageUrl = getArguments() != null ? getArguments().getString(IMAGE_DATA_EXTRA) : null;
+        if (savedInstanceState != null) {
+            resourceNumber = savedInstanceState.getInt(STATE_RESOURCE_NUMBER, 0);
+            imageNumber = savedInstanceState.getInt(STATE_IMAGE_NUMBER, 0);
+            Note note = EVERNOTE.getNote(imageNumber);
+            if (note.getResources().size() > resourceNumber)
+                mImageUrl = note.getResources().get(resourceNumber).getAttributes().getSourceURL();
+        }
     }
 
     @Override
@@ -113,12 +126,19 @@ public class ImageViewFragment extends Fragment
         mLayout = (HackySlidingPaneLayout) getActivity().findViewById(R.id.main_layout);
         mLayout.addHackyTouchListener(this);
 
-        final Note note = EVERNOTE.getNote(number);
+        final Note note = EVERNOTE.getNote(imageNumber);
         if (note != null) {
             setupCaptionAndImageSelectionMenu(note);
         }
 
         return v;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_RESOURCE_NUMBER, resourceNumber);
+        outState.putInt(STATE_IMAGE_NUMBER, imageNumber);
     }
 
     private void setupCaptionAndImageSelectionMenu(final Note note) {
@@ -131,42 +151,45 @@ public class ImageViewFragment extends Fragment
         if (note.getResources().size() <= 1)
             mSelectButton.setVisibility(View.INVISIBLE);
         else {
-            mSelectButton.setText(MARS_IMAGES.getMission().getImageName(note.getResources().get(0)));
+            Resource resource = resourceNumber >= note.getResources().size() ? null : note.getResources().get(resourceNumber);
+            String buttonText = (resource == null) ? ANAGLYPH : MARS_IMAGES.getMission().getImageName(resource);
+            mSelectButton.setText(buttonText);
             final List<String> menuItemNames = Lists.newArrayList();
-            for (Resource resource : note.getResources()) {
-                String imageName = MARS_IMAGES.getMission().getImageName(resource);
+            for (Resource r : note.getResources()) {
+                String imageName = MARS_IMAGES.getMission().getImageName(r);
                 menuItemNames.add(imageName);
             }
 
             final String[] leftAndRight = MARS_IMAGES.getMission().stereoForImages(note);
             if (leftAndRight.length > 0) {
-                menuItemNames.add("Anaglyph");
+                menuItemNames.add(ANAGLYPH);
             }
 
             mSelectButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    final PopupMenu mPopupMenu = new PopupMenu(getActivity(), mSelectButton);
+                    mPopupMenu = new PopupMenu(getActivity(), mSelectButton);
                     for (String menuItemName : menuItemNames) {
                         mPopupMenu.getMenu().add(Menu.NONE, menuItemNames.indexOf(menuItemName), Menu.NONE, menuItemName);
                     }
-                    mPopupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    menuItemClickListener = new PopupMenu.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem menuItem) {
-                            mSelectButton.setText(menuItem.getTitle());
-                            int resourceNumber = menuItem.getItemId();
+                            CharSequence title = menuItem.getTitle();
+                            mSelectButton.setText(title);
+                            resourceNumber = menuItem.getItemId();
                             if (resourceNumber < note.getResources().size()) {
                                 String url = note.getResources().get(resourceNumber).getAttributes().getSourceURL();
                                 mImageView.setImageDrawable(null);
                                 loadImage(url, mImageView, mAttacher);
-                            }
-                            else { //anaglyph
+                            } else { //anaglyph
                                 mImageView.setImageDrawable(null);
                                 loadAnaglyph(leftAndRight, mImageView, mAttacher);
                             }
                             return false;
                         }
-                    });
+                    };
+                    mPopupMenu.setOnMenuItemClickListener(menuItemClickListener);
                     mPopupMenu.show();
                 }
             });
@@ -212,7 +235,13 @@ public class ImageViewFragment extends Fragment
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        loadImage(mImageUrl, mImageView, mAttacher);
+        Note note = EVERNOTE.getNote(imageNumber);
+        if (resourceNumber < note.getResources().size())
+            loadImage(mImageUrl, mImageView, mAttacher);
+        else {
+            final String[] leftAndRight = MARS_IMAGES.getMission().stereoForImages(note);
+            loadAnaglyph(leftAndRight, mImageView, mAttacher);
+        }
 
         // Pass clicks on the ImageView to the parent activity to handle
         if (View.OnClickListener.class.isInstance(getActivity()) && Utils.hasHoneycomb()) {
@@ -229,7 +258,6 @@ public class ImageViewFragment extends Fragment
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //intent action: mission changed
             if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
                     intent.getAction().equals((MarsImagesApp.NOTES_CLEARED))) {
                 if (mImageView != null) {
@@ -242,9 +270,9 @@ public class ImageViewFragment extends Fragment
             }
             else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 if (reloadImageDueToResultsChange) {
-                    if (EVERNOTE.getNotesCount() > number) {
+                    if (EVERNOTE.getNotesCount() > imageNumber) {
                         reloadImageDueToResultsChange = false;
-                        mImageUrl = EVERNOTE.getNoteUrl(number);
+                        mImageUrl = EVERNOTE.getNoteUrl(imageNumber);
                         loadImage(mImageUrl, mImageView, mAttacher);
                     }
                 }
@@ -260,7 +288,7 @@ public class ImageViewFragment extends Fragment
                         if (attacher != null) {
                             attacher.update();
                         }
-                        final Note note = EVERNOTE.getNote(number);
+                        final Note note = EVERNOTE.getNote(imageNumber);
                         if (note != null) {
                             setupCaptionAndImageSelectionMenu(note);
                         }

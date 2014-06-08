@@ -1,9 +1,14 @@
 package gov.nasa.jpl.hi.marsimages;
 
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -22,7 +27,6 @@ import com.evernote.edam.userstore.UserStore;
 import com.evernote.thrift.TException;
 import com.evernote.thrift.protocol.TBinaryProtocol;
 import com.evernote.thrift.transport.THttpClient;
-import com.evernote.thrift.transport.TTransportException;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -43,9 +47,18 @@ public class EvernoteMars {
 
     public static EvernoteMars EVERNOTE = new EvernoteMars();
 
-    public static int TIMEOUT = 15;
+    public static int TIMEOUT = 15000;
 
-    public static final String NOTES_LOADED = "notesLoaded";
+    public static final String BEGIN_NOTE_LOADING = "beginNoteLoading";
+    public static final String END_NOTE_LOADING   = "endNoteLoading";
+    public static final String NUM_NOTES_RETURNED = "numNotesReturned";
+
+    private static final String OPPY_NOTEBOOK_ID   = "a7271bf8-0b06-495a-bb48-7c0c7af29f70";
+    private static final String MSL_NOTEBOOK_ID    = "0296f732-694d-4ccd-9f5b-5983dc98b9e0";
+    private static final String SPIRIT_NOTEBOOK_ID = "f1a72415-56e7-4244-8e12-def9be9c512b";
+
+    private static int NOTE_PAGE_SIZE = 15;
+    private final IntentFilter mIntentFilter;
 
     private NoteStore.Client noteStore;
     private UserStore.Client userStore;
@@ -53,16 +66,6 @@ public class EvernoteMars {
     private String uriPrefix;
 
     private static List<Note> notesArray = Lists.newArrayList();
-
-    private static int NOTE_PAGE_SIZE = 15;
-
-    private static final String OPPY_NOTEBOOK_ID   = "a7271bf8-0b06-495a-bb48-7c0c7af29f70";
-    private static final String MSL_NOTEBOOK_ID    = "0296f732-694d-4ccd-9f5b-5983dc98b9e0";
-    private static final String SPIRIT_NOTEBOOK_ID = "f1a72415-56e7-4244-8e12-def9be9c512b";
-
-    public static final String BEGIN_NOTE_LOADING = "beginNoteLoading";
-    public static final String END_NOTE_LOADING   = "endNoteLoading";
-    public static final String NUM_NOTES_RETURNED = "numNotesReturned";
 
     private static final Map<String, String> notebookIDs = Maps.newHashMap();
 
@@ -74,19 +77,25 @@ public class EvernoteMars {
         notebookIDs.put(Rover.SPIRIT, SPIRIT_NOTEBOOK_ID);
     }
 
+    private boolean hasNotesRemaining = true;
+
     private EvernoteMars() {
+        mIntentFilter = new IntentFilter(MarsImagesApp.MISSION_CHANGED);
         LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(mMessageReceiver,
-                new IntentFilter(MarsImagesApp.MISSION_CHANGED));
+                mIntentFilter);
     }
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //intent action: mission changed
-            searchWords = null;
-            EvernoteMars.reloadNotes(context, true); //reset connection for new mission notebook
+            if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
+                searchWords = null;
+                EvernoteMars.reloadNotes(context, true); //reset connection for new mission notebook
+            }
         }
     };
+
+    private WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
 
     public int getNotesCount() {
         return notesArray.size();
@@ -118,11 +127,11 @@ public class EvernoteMars {
             userInfo = userStore.getPublicUserInfo(user);
             uriPrefix = userStore.getPublicUserInfo(user).getWebApiUrlPrefix();
             String noteStoreUrl = userInfo.getNoteStoreUrl();
-            final String agent = "Mars Images/2.0;Android";
             THttpClient noteStoreHttpClient = new THttpClient(noteStoreUrl);
+            noteStoreHttpClient.setConnectTimeout(TIMEOUT);
             TBinaryProtocol noteStoreProtocol = new TBinaryProtocol(noteStoreHttpClient);
             noteStore = new NoteStore.Client(noteStoreProtocol, noteStoreProtocol);
-            Log.d("evernote connect", "Time to connect to Evernote: "+ watch.elapsed(TimeUnit.MILLISECONDS)+" ms");
+            Log.d("evernote connect", "Time to connect to Evernote: " + watch.elapsed(TimeUnit.MILLISECONDS) + " ms");
         }
     }
 
@@ -158,13 +167,42 @@ public class EvernoteMars {
             if (!(params[0] instanceof Context) || !(params[1] instanceof Integer) || !(params[2] instanceof Boolean)) {
                 Log.e(getClass().toString(), "Unexpected input parameters");
             }
-            Context context = (Context)params[0];
+            final Context context = (Context)params[0];
             Integer startIndex = (Integer)params[1];
-            Boolean clearNotes = (Boolean)params[2];
+            final Boolean clearNotes = (Boolean)params[2];
 
             if (clearNotes) {
                 notesArray.clear();
                 startIndex = 0;
+                hasNotesRemaining = true;
+            }
+
+            if (!hasNotesRemaining)
+                return null;
+
+            ConnectivityManager cm =
+                    (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null &&
+                    activeNetwork.isConnectedOrConnecting();
+            if (!isConnected) {
+                IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+                intentFilter.setPriority(100);
+                LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(
+                        mWifiStateReceiver, intentFilter);
+
+                ((Activity)context).runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        AlertDialog dialog = getAlertDialog(context, "Unable to connect to the network.");
+                        dialog.show();
+                        hasNotesRemaining = false;
+                    }
+                });
+                Intent intent = new Intent(END_NOTE_LOADING);
+                intent.putExtra(NUM_NOTES_RETURNED, 0);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                return null;
             }
 
             int notesReturned = 0;
@@ -172,26 +210,21 @@ public class EvernoteMars {
             try {
                 if (noteStore == null || userStore == null)
                     connect();
-            } catch (TTransportException tte) {
-                //FIXME
-            } catch (TException te) {
-                //FIXME
-            } catch (EDAMSystemException ese) {
-                //FIXME
-            } catch (EDAMNotFoundException enfe) {
-                //FIXME
-            } catch (EDAMUserException eue) {
-                //FIXME
+            } catch (Exception e) {
+                Log.w("service error", "Error connecting to Evernote: "+e);
+                suspendEvernoteQueries(30);
+                ((Activity)context).runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        AlertDialog dialog = getAlertDialog(context, "The Mars image service is currently unavailable. Please try again later.");
+                        dialog.show();
+                    }
+                });
+                Intent intent = new Intent(END_NOTE_LOADING);
+                intent.putExtra(NUM_NOTES_RETURNED,0);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                return null;
             }
-
-            //TODO ConnectivityManager
-//        if (_internetReachable.currentReachabilityStatus == NotReachable) {
-//            if (!_networkAlert.visible) {
-//                [_networkAlert show];
-//            }
-//            [MarsImageNotebook notifyNotesReturned:0];
-//            return;
-//        }
 
             if (notesArray.size() > startIndex) {
                 return null;
@@ -210,19 +243,25 @@ public class EvernoteMars {
                 }
                 NoteList notelist = noteStore.findNotes(null, filter, startIndex, NOTE_PAGE_SIZE);
                 notesReturned = notelist.getNotes().size();
-
+                hasNotesRemaining = notelist.getTotalNotes() - (startIndex + notesReturned) > 0;
                 for (Note note : notelist.getNotes()) {
                     Note orderedNote = reorderResources(note);
                     notesArray.add(orderedNote);
                 }
-            } catch (EDAMSystemException ese) {
-                //FIXME
-            } catch (EDAMNotFoundException enfe) {
-                //FIXME
-            } catch (EDAMUserException eue) {
-                //FIXME
-            } catch (TException te) {
-                //FIXME
+            } catch (Exception e) {
+                Log.w("service error", "Error querying Evernote: "+e);
+                suspendEvernoteQueries(30);
+                ((Activity)context).runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        AlertDialog dialog = getAlertDialog(context, "The Mars image service is currently unavailable. Please try again later.");
+                        dialog.show();
+                    }
+                });
+                Intent intent = new Intent(END_NOTE_LOADING);
+                intent.putExtra(NUM_NOTES_RETURNED, notesReturned);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                return null;
             }
 
             Intent intent = new Intent(END_NOTE_LOADING);
@@ -230,6 +269,22 @@ public class EvernoteMars {
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
             return null;
         }
+    }
+
+    private void suspendEvernoteQueries(final int timeInSeconds) {
+        hasNotesRemaining = false;
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    sleep(timeInSeconds*1000);
+                } catch (InterruptedException e) {
+                    //no need to handle
+                } finally {
+                    hasNotesRemaining = true;
+                }
+            }
+        }.start();
     }
 
     private Note reorderResources(Note note) {
@@ -255,6 +310,7 @@ public class EvernoteMars {
     }
 
     private static void reloadNotes(Context context, boolean resetConnection) {
+        EVERNOTE.hasNotesRemaining = true;
         if (resetConnection) {
             EVERNOTE.noteStore = null;
             EVERNOTE.userStore = null;
@@ -290,6 +346,34 @@ public class EvernoteMars {
         return formattedText.toString();
     }
 
+    public AlertDialog getAlertDialog(Context context, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setMessage(message)
+                .setCancelable(false)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.dismiss();
+                    }
+                });
+        return builder.create();
+    }
+
+    public static class WifiStateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null &&
+                    activeNetwork.isConnectedOrConnecting();
+            if (isConnected) {
+                Log.d("wifi state connected", "Wifi reconnected.");
+                LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).unregisterReceiver(this);
+                EVERNOTE.hasNotesRemaining = true;
+                EVERNOTE.loadMoreNotes(context);
+            }
+        }
+    }
 }
 
 

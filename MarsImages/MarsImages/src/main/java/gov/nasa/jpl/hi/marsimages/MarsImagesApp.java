@@ -22,9 +22,7 @@ import gov.nasa.jpl.hi.marsimages.rovers.Spirit;
  */
 public class MarsImagesApp extends Application {
 
-    public static final String IMAGE_CACHE_DIR = "images";
     public static final String NOTES_CLEARED = "notesCleared";
-    public static MarsImagesApp MARS_IMAGES;
     public static final String MISSION_CHANGED = "missionChanged";
     public static final String IMAGE_SELECTED = "imageSelected";
     public static final String IMAGE_INDEX = "imageIndex";
@@ -32,8 +30,10 @@ public class MarsImagesApp extends Application {
     public static final String VIEW_PAGER_SOURCE = "viewPagerSource";
     public static final String LIST_SOURCE = "listSource";
 
+    public static MarsImagesApp MARS_IMAGES;
     private String missionName = Rover.CURIOSITY;
     private Map<String, Rover> missions = Maps.newHashMap();
+    private long pauseTimestamp;
 
     public MarsImagesApp() {
         MARS_IMAGES = this;
@@ -84,6 +84,14 @@ public class MarsImagesApp extends Application {
             Intent intent = new Intent(MISSION_CHANGED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
         }
+    }
+
+    public void setPauseTimestamp(long pauseTimestamp) {
+        this.pauseTimestamp = pauseTimestamp;
+    }
+
+    public long getPauseTimestamp() {
+        return pauseTimestamp;
     }
 }
 
