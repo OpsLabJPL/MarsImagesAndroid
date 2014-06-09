@@ -12,7 +12,8 @@ import gov.nasa.jpl.hi.marsimages.ui.ImageViewActivity;
  */
 public class Utils {
 
-    private Utils() {};
+    private Utils() {
+    }
 
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)

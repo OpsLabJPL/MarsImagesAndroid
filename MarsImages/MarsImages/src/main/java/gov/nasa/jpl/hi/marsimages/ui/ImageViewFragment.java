@@ -67,14 +67,14 @@ public class ImageViewFragment extends Fragment
     private HackySlidingPaneLayout mLayout;
     private Button mSelectButton;
     private PorterDuffXfermode mXferMode = new PorterDuffXfermode(PorterDuff.Mode.LIGHTEN);
-    private static final ColorMatrix redMatrix = new ColorMatrix(new float[] {
+    private static final ColorMatrix redMatrix = new ColorMatrix(new float[]{
             1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f });
+            0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f});
     private static final ColorMatrixColorFilter redFilter = new ColorMatrixColorFilter(
             redMatrix);
-    private static final ColorMatrix blueMatrix = new ColorMatrix(new float[] {
+    private static final ColorMatrix blueMatrix = new ColorMatrix(new float[]{
             0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f });
+            0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f});
     private static final ColorMatrixColorFilter blueFilter = new ColorMatrixColorFilter(
             blueMatrix);
     private PopupMenu.OnMenuItemClickListener menuItemClickListener;
@@ -97,7 +97,8 @@ public class ImageViewFragment extends Fragment
     }
 
     // Empty constructor, required as per Fragment docs
-    public ImageViewFragment() {}
+    public ImageViewFragment() {
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -236,6 +237,8 @@ public class ImageViewFragment extends Fragment
         super.onActivityCreated(savedInstanceState);
 
         Note note = EVERNOTE.getNote(imageNumber);
+        if (note == null) return;
+
         if (resourceNumber < note.getResources().size())
             loadImage(mImageUrl, mImageView, mAttacher);
         else {
@@ -267,8 +270,7 @@ public class ImageViewFragment extends Fragment
                         mAttacher.update();
                     }
                 }
-            }
-            else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
+            } else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 if (reloadImageDueToResultsChange) {
                     if (EVERNOTE.getNotesCount() > imageNumber) {
                         reloadImageDueToResultsChange = false;
@@ -343,14 +345,18 @@ public class ImageViewFragment extends Fragment
         AlphaAnimation anim = new AlphaAnimation(1.0f, 0.0f);
         anim.setAnimationListener(new Animation.AnimationListener() {
             @Override
-            public void onAnimationStart(Animation animation) {}
+            public void onAnimationStart(Animation animation) {
+            }
+
             @Override
             public void onAnimationEnd(Animation animation) {
                 mCaptionView.setAlpha(0);
                 mSelectButton.setAlpha(0);
             }
+
             @Override
-            public void onAnimationRepeat(Animation animation) {}
+            public void onAnimationRepeat(Animation animation) {
+            }
         });
         anim.setStartOffset(delayMillis);
         anim.setDuration(1000);

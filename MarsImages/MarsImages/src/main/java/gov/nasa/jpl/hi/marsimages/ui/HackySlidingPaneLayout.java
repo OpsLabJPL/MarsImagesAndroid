@@ -159,13 +159,16 @@ public class HackySlidingPaneLayout extends ViewGroup {
     public interface PanelSlideListener {
         /**
          * Called when a sliding pane's position changes.
-         * @param panel The child view that was moved
+         *
+         * @param panel       The child view that was moved
          * @param slideOffset The new offset of this sliding pane within its range, from 0-1
          */
         public void onPanelSlide(View panel, float slideOffset);
+
         /**
          * Called when a sliding pane becomes slid completely open. The pane may or may not
          * be interactive at this point depending on how much of the pane is visible.
+         *
          * @param panel The child view that was slid to an open position, revealing other panes
          */
         public void onPanelOpened(View panel);
@@ -173,6 +176,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
         /**
          * Called when a sliding pane becomes slid completely closed. The pane is now guaranteed
          * to be interactive. It may now obscure other views in the layout.
+         *
          * @param panel The child view that was slid to a closed position
          */
         public void onPanelClosed(View panel);
@@ -186,9 +190,11 @@ public class HackySlidingPaneLayout extends ViewGroup {
         @Override
         public void onPanelSlide(View panel, float slideOffset) {
         }
+
         @Override
         public void onPanelOpened(View panel) {
         }
+
         @Override
         public void onPanelClosed(View panel) {
         }
@@ -234,7 +240,6 @@ public class HackySlidingPaneLayout extends ViewGroup {
 
     /**
      * @return The distance the lower pane will parallax by when the upper pane is fully closed.
-     *
      * @see #setParallaxDistance(int)
      */
     public int getParallaxDistance() {
@@ -753,8 +758,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
             final boolean interceptForDrag = mDragHelper.shouldInterceptTouchEvent(ev);
 
             return interceptForDrag || interceptTap;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             //swallow array index out of bounds exception to work around Android bug using PhotoView
         }
         return false;
@@ -768,8 +772,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
 
         try {
             mDragHelper.processTouchEvent(ev);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             //swallow Android bug with layout and PhotoView
             return false;
         }
@@ -984,7 +987,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
      * Smoothly animate mDraggingPane to the target X position within its range.
      *
      * @param slideOffset position to animate to
-     * @param velocity initial velocity in case of fling, or 0.
+     * @param velocity    initial velocity in case of fling, or 0.
      */
     boolean smoothSlideTo(float slideOffset, int velocity) {
         if (!mCanSlide) {
@@ -1080,12 +1083,12 @@ public class HackySlidingPaneLayout extends ViewGroup {
     /**
      * Tests scrollability within child views of v given a delta of dx.
      *
-     * @param v View to test for horizontal scrollability
+     * @param v      View to test for horizontal scrollability
      * @param checkV Whether the view v passed should itself be checked for scrollability (true),
      *               or just its children (false).
-     * @param dx Delta scrolled in pixels
-     * @param x X coordinate of the active touch point
-     * @param y Y coordinate of the active touch point
+     * @param dx     Delta scrolled in pixels
+     * @param x      X coordinate of the active touch point
+     * @param y      Y coordinate of the active touch point
      * @return true if child views of v can be scrolled by delta of dx.
      */
     protected boolean canScroll(View v, boolean checkV, int dx, int x, int y) {
@@ -1112,7 +1115,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
         /* Fix for viewpager support http://stackoverflow.com/questions/17490899/using-androids-slidingpanelayout-with-viewpager */
          /* special case ViewPagers, which don't properly implement the scrolling interface */
         return checkV && (ViewCompat.canScrollHorizontally(v, -dx) ||
-              ((v instanceof ViewPager) && canViewPagerScrollHorizontally((ViewPager) v, -dx)));
+                ((v instanceof ViewPager) && canViewPagerScrollHorizontally((ViewPager) v, -dx)));
 
     }
 
@@ -1240,7 +1243,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
     }
 
     public static class LayoutParams extends ViewGroup.MarginLayoutParams {
-        private static final int[] ATTRS = new int[] {
+        private static final int[] ATTRS = new int[]{
                 android.R.attr.layout_weight
         };
 

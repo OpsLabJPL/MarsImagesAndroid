@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaScannerConnection;
@@ -34,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.evernote.edam.type.Note;
+import com.google.common.collect.Lists;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.powellware.marsimages.R;
 
@@ -41,6 +43,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
@@ -49,6 +52,8 @@ import se.emilsjolander.stickylistheaders.StickyListHeadersListView;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES_PREFERENCES_KEY;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.VIEW_PAGER_SOURCE;
 
 public class ImageViewActivity extends ActionBarActivity
@@ -100,7 +105,7 @@ public class ImageViewActivity extends ActionBarActivity
 
                 //try to load more notes when the last image view page is selected
                 int pageCount = mAdapter.getCount();
-                if (position >= pageCount - mPager.getOffscreenPageLimit()-1)
+                if (position >= pageCount - mPager.getOffscreenPageLimit() - 1)
                     EVERNOTE.loadMoreNotes(ImageViewActivity.this);
             }
         });
@@ -108,8 +113,13 @@ public class ImageViewActivity extends ActionBarActivity
         mList = (StickyListHeadersListView) findViewById(R.id.image_list_view);
 
         mSpinnerAdapter = ArrayAdapter.createFromResource(this, R.array.missions, android.R.layout.simple_spinner_dropdown_item);
+        String[] missions = getResources().getStringArray(R.array.missions);
+        List<String> missionList = Lists.newArrayList(missions);
+        CharSequence missionName = MARS_IMAGES.getMissionName();
+        int missionIndex = missionList.indexOf(missionName);
         getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
         getActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
+        getSupportActionBar().setSelectedNavigationItem(missionIndex);
 
         // Set up activity to go full screen
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -156,8 +166,7 @@ public class ImageViewActivity extends ActionBarActivity
         mSlidingPane.setPanelSlideListener(sliderListener);
         if (mSlidingPane.isOpen()) {
             sliderListener.onPanelOpened(null);
-        }
-        else {
+        } else {
             sliderListener.onPanelClosed(null);
         }
 
@@ -173,7 +182,12 @@ public class ImageViewActivity extends ActionBarActivity
     @Override
     public boolean onNavigationItemSelected(int position, long itemId) {
         String[] missionNames = getResources().getStringArray(R.array.missions);
-        MARS_IMAGES.setMission(missionNames[position], this);
+        String missionName = missionNames[position];
+        MARS_IMAGES.setMission(missionName, this);
+        SharedPreferences sharedPreferences = getSharedPreferences(MARS_IMAGES_PREFERENCES_KEY, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(MISSION_NAME_PREFERENCE, missionName);
+        editor.commit();
         return true;
     }
 
@@ -189,14 +203,12 @@ public class ImageViewActivity extends ActionBarActivity
                     needToSetViewPagerToPageZero = false;
                     mPager.setCurrentItem(0);
                 }
-            }
-            else if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
+            } else if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
                     intent.getAction().equals(MarsImagesApp.NOTES_CLEARED)) {
                 mAdapter.setCount(0);
                 mAdapter.notifyDataSetChanged();
                 needToSetViewPagerToPageZero = true;
-            }
-            else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
+            } else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
                 Integer imageIndex = intent.getIntExtra(MarsImagesApp.IMAGE_INDEX, 0);
                 String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
                 if (!selectionSource.equals(VIEW_PAGER_SOURCE)) {
@@ -211,7 +223,7 @@ public class ImageViewActivity extends ActionBarActivity
         super.onResume();
         long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
         ImageLoader.getInstance().resume();
-        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30*60*1000)
+        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
             EVERNOTE.loadMoreNotes(this, true);
     }
 
@@ -236,19 +248,18 @@ public class ImageViewActivity extends ActionBarActivity
         mSearchItem = menu.findItem(R.id.action_search);
         searchView = (SearchView) mSearchItem.getActionView();
         searchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
-                @SuppressLint("NewApi")
-                @Override
-                public void onFocusChange(View v, boolean hasFocus) {
-                    if (!hasFocus) {
-                        if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
-                        searchView.setQuery("", false);
-                    }
-                    else {
-                        EVERNOTE.setSearchWords(null, ImageViewActivity.this);
-                        mPager.setCurrentItem(0);
-                    }
+            @SuppressLint("NewApi")
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (!hasFocus) {
+                    if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
+                    searchView.setQuery("", false);
+                } else {
+                    EvernoteMars.setSearchWords(null, ImageViewActivity.this);
+                    mPager.setCurrentItem(0);
                 }
-            });
+            }
+        });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
@@ -259,15 +270,16 @@ public class ImageViewActivity extends ActionBarActivity
                 }
                 Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
                 LocalBroadcastManager.getInstance(ImageViewActivity.this).sendBroadcast(intent);
-                EVERNOTE.setSearchWords(query, ImageViewActivity.this);
-                Log.d("search query", "user entered query "+query);
+                EvernoteMars.setSearchWords(query, ImageViewActivity.this);
+                Log.d("search query", "user entered query " + query);
                 return false;
             }
+
             @SuppressLint("NewApi")
             @Override
             public boolean onQueryTextChange(String query) {
                 if (query == null || query.isEmpty()) {
-                    EVERNOTE.setSearchWords(null, ImageViewActivity.this);
+                    EvernoteMars.setSearchWords(null, ImageViewActivity.this);
                 }
                 return false;
             }
@@ -288,7 +300,7 @@ public class ImageViewActivity extends ActionBarActivity
                 saveImageToGallery();
                 return true;
             case android.R.id.home:
-                Log.d("home", "Home touched. slidable: "+mSlidingPane.isSlideable());
+                Log.d("home", "Home touched. slidable: " + mSlidingPane.isSlideable());
                 if (mSlidingPane.isOpen())
                     mSlidingPane.closePane();
                 else
@@ -311,7 +323,7 @@ public class ImageViewActivity extends ActionBarActivity
             protected File doInBackground(Object... params) {
                 if (!(params[0] instanceof Note) || !(params[1] instanceof Integer))
                     return null;
-                return saveImageToExternalStorage((Note)params[0], (Integer)params[1]);
+                return saveImageToExternalStorage((Note) params[0], (Integer) params[1]);
             }
 
             @Override
@@ -332,7 +344,7 @@ public class ImageViewActivity extends ActionBarActivity
             protected Void doInBackground(Object... params) {
                 if (!(params[0] instanceof Note) || !(params[1] instanceof Integer))
                     return null;
-                saveImageToExternalStorage((Note)params[0], (Integer)params[1]);
+                saveImageToExternalStorage((Note) params[0], (Integer) params[1]);
                 return null;
             }
 
@@ -372,7 +384,7 @@ public class ImageViewActivity extends ActionBarActivity
     }
 
     private static String getImageViewTag(int number) {
-        return "imageview"+number;
+        return "imageview" + number;
     }
 
     public static int getImageViewFragmentNumber(String tag) {
@@ -398,11 +410,12 @@ public class ImageViewActivity extends ActionBarActivity
 
         @Override
         public Fragment getItem(int position) {
-            Log.d("getitem", "Getting fragment for index: "+position);
+            Log.d("getitem", "Getting fragment for index: " + position);
             String imageUrl = EVERNOTE.getNoteUrl(position);
             return ImageViewFragment.newInstance(imageUrl, ImageViewActivity.getImageViewTag(position));
         }
     }
+
     /**
      * Create a compatible helper that will manipulate the action bar if
      * available.
@@ -445,6 +458,7 @@ public class ImageViewActivity extends ActionBarActivity
      */
     private class ActionBarHelperICS extends ActionBarHelper {
         private final ActionBar mActionBar;
+
         ActionBarHelperICS() {
             mActionBar = getActionBar();
         }
@@ -470,14 +484,14 @@ public class ImageViewActivity extends ActionBarActivity
         }
 
         @Override
-        public void onPanelClosed(View panel){
+        public void onPanelClosed(View panel) {
             mActionBar.onPanelClosed();
             resetLayoutParams(0);
         }
 
         @Override
         public void onPanelSlide(View panel, float slideOffset) {
-            resetLayoutParams((int)(mList.getWidth()*slideOffset));
+            resetLayoutParams((int) (mList.getWidth() * slideOffset));
         }
 
         private void resetLayoutParams(int bottomPaneWidth) {

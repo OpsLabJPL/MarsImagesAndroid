@@ -50,11 +50,11 @@ public class EvernoteMars {
     public static int TIMEOUT = 15000;
 
     public static final String BEGIN_NOTE_LOADING = "beginNoteLoading";
-    public static final String END_NOTE_LOADING   = "endNoteLoading";
+    public static final String END_NOTE_LOADING = "endNoteLoading";
     public static final String NUM_NOTES_RETURNED = "numNotesReturned";
 
-    private static final String OPPY_NOTEBOOK_ID   = "a7271bf8-0b06-495a-bb48-7c0c7af29f70";
-    private static final String MSL_NOTEBOOK_ID    = "0296f732-694d-4ccd-9f5b-5983dc98b9e0";
+    private static final String OPPY_NOTEBOOK_ID = "a7271bf8-0b06-495a-bb48-7c0c7af29f70";
+    private static final String MSL_NOTEBOOK_ID = "0296f732-694d-4ccd-9f5b-5983dc98b9e0";
     private static final String SPIRIT_NOTEBOOK_ID = "f1a72415-56e7-4244-8e12-def9be9c512b";
 
     private static int NOTE_PAGE_SIZE = 15;
@@ -125,7 +125,7 @@ public class EvernoteMars {
             userStore = new UserStore.Client(userStoreProtocol, userStoreProtocol);
             String user = MARS_IMAGES.getMission().getUser();
             userInfo = userStore.getPublicUserInfo(user);
-            uriPrefix = userStore.getPublicUserInfo(user).getWebApiUrlPrefix();
+            uriPrefix = userInfo.getWebApiUrlPrefix();
             String noteStoreUrl = userInfo.getNoteStoreUrl();
             THttpClient noteStoreHttpClient = new THttpClient(noteStoreUrl);
             noteStoreHttpClient.setConnectTimeout(TIMEOUT);
@@ -139,13 +139,13 @@ public class EvernoteMars {
         String imageUrl = null;
         if (position >= 0 && position < notesArray.size()) {
             Note note = notesArray.get(position);
-            imageUrl = EVERNOTE.getUriPrefix() + "res/"+note.getResources().get(0).getGuid();
+            imageUrl = EVERNOTE.getUriPrefix() + "res/" + note.getResources().get(0).getGuid();
         }
         return imageUrl;
     }
 
     public String getUriPrefix() {
-       return uriPrefix;
+        return uriPrefix;
     }
 
     public String getThumbnailURL(int position, int thumbnailSize) {
@@ -155,7 +155,7 @@ public class EvernoteMars {
             if (note.getResources().isEmpty())
                 return null;
             String guid = note.getResources().get(0).getGuid();
-            thumbnailUrl = getUriPrefix()+"thm/res/"+guid+"?size="+thumbnailSize;
+            thumbnailUrl = getUriPrefix() + "thm/res/" + guid + "?size=" + thumbnailSize;
         }
         return thumbnailUrl;
     }
@@ -167,21 +167,23 @@ public class EvernoteMars {
             if (!(params[0] instanceof Context) || !(params[1] instanceof Integer) || !(params[2] instanceof Boolean)) {
                 Log.e(getClass().toString(), "Unexpected input parameters");
             }
-            final Context context = (Context)params[0];
-            Integer startIndex = (Integer)params[1];
-            final Boolean clearNotes = (Boolean)params[2];
+            final Context context = (Context) params[0];
+            Integer startIndex = (Integer) params[1];
+            final Boolean clearNotes = (Boolean) params[2];
 
             if (clearNotes) {
                 notesArray.clear();
                 startIndex = 0;
                 hasNotesRemaining = true;
+                Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
             }
 
             if (!hasNotesRemaining)
                 return null;
 
             ConnectivityManager cm =
-                    (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
             boolean isConnected = activeNetwork != null &&
                     activeNetwork.isConnectedOrConnecting();
@@ -191,7 +193,7 @@ public class EvernoteMars {
                 LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(
                         mWifiStateReceiver, intentFilter);
 
-                ((Activity)context).runOnUiThread(new Runnable() {
+                ((Activity) context).runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         AlertDialog dialog = getAlertDialog(context, "Unable to connect to the network.");
@@ -211,9 +213,9 @@ public class EvernoteMars {
                 if (noteStore == null || userStore == null)
                     connect();
             } catch (Exception e) {
-                Log.w("service error", "Error connecting to Evernote: "+e);
+                Log.w("service error", "Error connecting to Evernote: " + e);
                 suspendEvernoteQueries(30);
-                ((Activity)context).runOnUiThread(new Runnable() {
+                ((Activity) context).runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         AlertDialog dialog = getAlertDialog(context, "The Mars image service is currently unavailable. Please try again later.");
@@ -221,7 +223,7 @@ public class EvernoteMars {
                     }
                 });
                 Intent intent = new Intent(END_NOTE_LOADING);
-                intent.putExtra(NUM_NOTES_RETURNED,0);
+                intent.putExtra(NUM_NOTES_RETURNED, 0);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                 return null;
             }
@@ -249,9 +251,9 @@ public class EvernoteMars {
                     notesArray.add(orderedNote);
                 }
             } catch (Exception e) {
-                Log.w("service error", "Error querying Evernote: "+e);
+                Log.w("service error", "Error querying Evernote: " + e);
                 suspendEvernoteQueries(30);
-                ((Activity)context).runOnUiThread(new Runnable() {
+                ((Activity) context).runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         AlertDialog dialog = getAlertDialog(context, "The Mars image service is currently unavailable. Please try again later.");
@@ -277,7 +279,7 @@ public class EvernoteMars {
             @Override
             public void run() {
                 try {
-                    sleep(timeInSeconds*1000);
+                    sleep(timeInSeconds * 1000);
                 } catch (InterruptedException e) {
                     //no need to handle
                 } finally {
@@ -321,8 +323,8 @@ public class EvernoteMars {
     }
 
     public static void setSearchWords(String searchWords, Context context) {
-        EVERNOTE.searchWords = searchWords;
-        EVERNOTE.reloadNotes(context);
+        EvernoteMars.searchWords = searchWords;
+        EvernoteMars.reloadNotes(context);
     }
 
     private String formatSearch(String text) {
@@ -331,8 +333,11 @@ public class EvernoteMars {
         for (String w : words) {
             String word = w;
             int value = 0;
-            try { value = Integer.parseInt(word); } catch (NumberFormatException e) {}
-            if (value > 0 && !word.endsWith("*")){
+            try {
+                value = Integer.parseInt(word);
+            } catch (NumberFormatException e) {
+            }
+            if (value > 0 && !word.endsWith("*")) {
                 word = String.format("\"Sol %05d\"", value);
             }
 
@@ -340,9 +345,9 @@ public class EvernoteMars {
                 formattedText.append(" ");
             }
 
-            formattedText.append(String.format("intitle:%s",word));
+            formattedText.append(String.format("intitle:%s", word));
         }
-        Log.d("search words", "formatted text: "+formattedText);
+        Log.d("search words", "formatted text: " + formattedText);
         return formattedText.toString();
     }
 

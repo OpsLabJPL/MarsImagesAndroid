@@ -3,6 +3,7 @@ package gov.nasa.jpl.hi.marsimages;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.v4.content.LocalBroadcastManager;
 
 import com.google.common.collect.Maps;
@@ -29,9 +30,11 @@ public class MarsImagesApp extends Application {
     public static final String SELECTION_SOURCE = "selectionSource";
     public static final String VIEW_PAGER_SOURCE = "viewPagerSource";
     public static final String LIST_SOURCE = "listSource";
-
+    public static final String MARS_IMAGES_PREFERENCES_KEY = "com.powellware.marsimages.MARS_IMAGES";
+    public static final String MISSION_NAME_PREFERENCE = "mission_name_preference";
+    private static final String CURIOSITY_MISSION_NAME = "Curiosity";
     public static MarsImagesApp MARS_IMAGES;
-    private String missionName = Rover.CURIOSITY;
+    private String missionName;
     private Map<String, Rover> missions = Maps.newHashMap();
     private long pauseTimestamp;
 
@@ -45,6 +48,9 @@ public class MarsImagesApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        SharedPreferences sharedPreferences = getSharedPreferences(MARS_IMAGES_PREFERENCES_KEY, MODE_PRIVATE);
+        missionName = sharedPreferences.getString(MISSION_NAME_PREFERENCE, CURIOSITY_MISSION_NAME);
         // Create global configuration and initialize ImageLoader with this configuration
         DisplayImageOptions defaultOptions = new DisplayImageOptions.Builder()
                 .cacheInMemory(true)
@@ -78,7 +84,7 @@ public class MarsImagesApp extends Application {
     }
 
     public void setMission(String newMissionName, Context context) {
-        String newMission = newMissionName.toLowerCase().trim();
+        String newMission = newMissionName;
         if (!this.missionName.equals(newMission)) {
             this.missionName = newMission;
             Intent intent = new Intent(MISSION_CHANGED);

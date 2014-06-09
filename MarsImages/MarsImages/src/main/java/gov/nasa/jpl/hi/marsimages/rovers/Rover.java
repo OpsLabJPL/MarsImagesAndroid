@@ -18,9 +18,9 @@ import java.util.Set;
  */
 public abstract class Rover {
 
-    public static final String CURIOSITY = "curiosity";
-    public static final String OPPORTUNITY = "opportunity";
-    public static final String SPIRIT = "spirit";
+    public static final String CURIOSITY = "Curiosity";
+    public static final String OPPORTUNITY = "Opportunity";
+    public static final String SPIRIT = "Spirit";
 
     public static final String SOL = "Sol";
     public static final String LTST = "LTST";
@@ -44,13 +44,13 @@ public abstract class Rover {
 
     public String getSectionText(Note note) {
         int sol = getSol(note);
-        double interval = sol*24*60*60*EARTH_SECS_PER_MARS_SEC;
+        double interval = sol * 24 * 60 * 60 * EARTH_SECS_PER_MARS_SEC;
         GregorianCalendar calendar = new GregorianCalendar();
         Date epoch = getEpoch();
         calendar.setTime(epoch);
-        calendar.add(Calendar.SECOND, (int)interval);
+        calendar.add(Calendar.SECOND, (int) interval);
         String formattedDate = DATE_FORMAT.format(calendar.getTime());
-        return "Sol "+sol+"  "+formattedDate;
+        return "Sol " + sol + "  " + formattedDate;
     }
 
     public abstract int getSol(Note note);
@@ -67,7 +67,7 @@ public abstract class Rover {
         String url = resource.getAttributes().getSourceURL();
         String[] tokens = url.split("[\\./]");
         int numTokens = tokens.length;
-        String imageid = tokens[numTokens-2];
+        String imageid = tokens[numTokens - 2];
         return imageid;
     }
 
@@ -97,7 +97,7 @@ public abstract class Rover {
         @Override
         public String getSortableImageFilename(String sourceURL) {
             String[] tokens = sourceURL.split("/");
-            String filename = tokens[tokens.length-1];
+            String filename = tokens[tokens.length - 1];
             if (filename.startsWith("Sol"))
                 return "0"; //sort Cornell Pancam images first
             else if ((filename.startsWith("1") || filename.startsWith("2")) && filename.length() == 31)
@@ -130,7 +130,7 @@ public abstract class Rover {
         public String getDetailText(Note note) {
             if (note == null) return "";
             String marstime = tokenize(note.getTitle()).marsLocalTime;
-            return (marstime != null) ? marstime+" LST" : "";
+            return (marstime != null) ? marstime + " LST" : "";
         }
 
         @Override
@@ -152,12 +152,10 @@ public abstract class Rover {
                 if (word.equals(SOL)) {
                     state = TitleState.SOL_NUMBER;
                     continue;
-                }
-                else if (word.equals(LTST)) {
+                } else if (word.equals(LTST)) {
                     state = TitleState.MARS_LOCAL_TIME;
                     continue;
-                }
-                else if (word.equals(RMC)) {
+                } else if (word.equals(RMC)) {
                     state = TitleState.ROVER_MOTION_COUNTER;
                     continue;
                 }
@@ -182,7 +180,7 @@ public abstract class Rover {
                         if (mer.instrumentName == null) {
                             mer.instrumentName = word;
                         } else {
-                            mer.instrumentName += " "+word;
+                            mer.instrumentName += " " + word;
                         }
                         break;
                     case MARS_LOCAL_TIME:
@@ -194,7 +192,7 @@ public abstract class Rover {
                         mer.driveIndex = Integer.parseInt(indices[1]);
                         break;
                     default:
-                        Log.w("mer title","Unexpected state in parsing image title: "+state);
+                        Log.w("mer title", "Unexpected state in parsing image title: " + state);
                         break;
                 }
             }
@@ -251,7 +249,7 @@ public abstract class Rover {
                         mer.driveIndex = Integer.parseInt(indices[1]);
                         break;
                     default:
-                        Log.w("mer title","Unexpected state in parsing course plot title: "+state);
+                        Log.w("mer title", "Unexpected state in parsing course plot title: " + state);
                         break;
                 }
             }
@@ -265,15 +263,15 @@ public abstract class Rover {
             if (resource.getAttributes().getSourceURL().indexOf("False") != -1)
                 return "Color";
 
-            String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
+            String instrument = imageid.substring(instrumentIndex, instrumentIndex + 1);
             if (instrument.equals("N") || instrument.equals("F") || instrument.equals("R")) {
-                String eye = imageid.substring(eyeIndex, eyeIndex+1);
+                String eye = imageid.substring(eyeIndex, eyeIndex + 1);
                 if (eye.equals("L"))
                     return "Left";
                 else
                     return "Right";
             } else if (instrument.equals("P")) {
-                return imageid.substring(eyeIndex, eyeIndex+2);
+                return imageid.substring(eyeIndex, eyeIndex + 2);
             }
 
             return "";
@@ -283,7 +281,7 @@ public abstract class Rover {
             if (note == null || note.getResources().size() == 0)
                 return new String[0];
             String imageid = getImageID(note.getResources().get(0));
-            String instrument = imageid.substring(instrumentIndex, instrumentIndex+1);
+            String instrument = imageid.substring(instrumentIndex, instrumentIndex + 1);
             if (!stereoInstruments.contains(instrument) && !imageid.startsWith("Sol"))
                 return new String[0];
 
@@ -292,7 +290,7 @@ public abstract class Rover {
             int index = 0;
             for (Resource resource : note.getResources()) {
                 imageid = getImageID(resource);
-                String eye = imageid.substring(eyeIndex, eyeIndex+1);
+                String eye = imageid.substring(eyeIndex, eyeIndex + 1);
                 if (leftImageIndex == -1 && eye.equals("L") && !imageid.startsWith("Sol"))
                     leftImageIndex = index;
                 if (rightImageIndex == -1 && eye.equals("R"))
@@ -300,9 +298,9 @@ public abstract class Rover {
                 index += 1;
             }
             if (leftImageIndex >= 0 && rightImageIndex >= 0) {
-                return new String[] {
+                return new String[]{
                         note.getResources().get(leftImageIndex).getAttributes().getSourceURL(),
-                        note.getResources().get(rightImageIndex).getAttributes().getSourceURL() };
+                        note.getResources().get(rightImageIndex).getAttributes().getSourceURL()};
             }
             return new String[0];
         }
