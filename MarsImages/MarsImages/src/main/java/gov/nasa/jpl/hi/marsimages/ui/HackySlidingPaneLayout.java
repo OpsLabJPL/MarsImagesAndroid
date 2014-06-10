@@ -53,7 +53,7 @@ public class HackySlidingPaneLayout extends ViewGroup {
     /**
      * If no fade color is given by default it will fade to 80% gray.
      */
-    private static final int DEFAULT_FADE_COLOR = 0xcccccccc;
+    private static final int DEFAULT_FADE_COLOR = 0x00000000;
 
     /**
      * The fade color used for the sliding panel. 0 = no fading.

@@ -85,6 +85,7 @@ public class ImageViewActivity extends ActionBarActivity
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
         mSlidingPane = (HackySlidingPaneLayout) findViewById(R.id.main_layout);
+        mSlidingPane.setCoveredFadeColor(0x00000000);
 
         // Set up ViewPager and backing adapter
         mAdapter = new ImagePagerAdapter(getSupportFragmentManager());
@@ -164,10 +165,12 @@ public class ImageViewActivity extends ActionBarActivity
         mActionBar.init();
         SliderListener sliderListener = new SliderListener();
         mSlidingPane.setPanelSlideListener(sliderListener);
-        if (mSlidingPane.isOpen()) {
+        if (mList.isShown()) {
             sliderListener.onPanelOpened(null);
+            resetLayoutParams(mList.getWidth());
         } else {
             sliderListener.onPanelClosed(null);
+            resetLayoutParams(0);
         }
 
         EVERNOTE.loadMoreNotes(this);
@@ -310,6 +313,16 @@ public class ImageViewActivity extends ActionBarActivity
         return super.onOptionsItemSelected(item);
     }
 
+    private void resetLayoutParams(int bottomPaneWidth) {
+        ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
+        final DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        final int width = displayMetrics.widthPixels;
+        layoutParams.width = width - bottomPaneWidth + 1;
+        Log.d("new-width", "setting width to " + layoutParams.width);
+        mPager.setLayoutParams(layoutParams);
+    }
+
     private void createAboutThisAppActivity() {
         Intent aboutThisAppIntent = new Intent(AboutThisAppActivity.INTENT_ACTION_ABOUT_THIS_APP);
         startActivity(aboutThisAppIntent);
@@ -449,7 +462,6 @@ public class ImageViewActivity extends ActionBarActivity
                 getActionBar().setHomeAsUpIndicator(
                         getResources().getDrawable(R.drawable.abc_ic_ab_back_holo_dark));
             }
-
         }
     }
 
@@ -481,27 +493,19 @@ public class ImageViewActivity extends ActionBarActivity
         public void onPanelOpened(View panel) {
             mActionBar.onPanelOpened();
             resetLayoutParams(mList.getWidth());
+            mPager.setCurrentItem(mPager.getCurrentItem());
         }
 
         @Override
         public void onPanelClosed(View panel) {
             mActionBar.onPanelClosed();
             resetLayoutParams(0);
+            mPager.setCurrentItem(mPager.getCurrentItem());
         }
 
         @Override
         public void onPanelSlide(View panel, float slideOffset) {
             resetLayoutParams((int) (mList.getWidth() * slideOffset));
-        }
-
-        private void resetLayoutParams(int bottomPaneWidth) {
-            ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
-            final DisplayMetrics displayMetrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-            final int width = displayMetrics.widthPixels;
-            layoutParams.width = width - bottomPaneWidth + 1;
-            Log.d("new-width", "setting width to " + layoutParams.width);
-            mPager.setLayoutParams(layoutParams);
         }
     }
 }
