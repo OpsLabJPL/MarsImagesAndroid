@@ -8,7 +8,6 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.widget.SwipeRefreshLayout;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,12 +30,12 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 /**
  * Created by mpowell on 5/27/14.
  */
-public class ImageListFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener, AdapterView.OnItemClickListener {
+public class ImageListFragment extends Fragment implements AdapterView.OnItemClickListener {
 
     private static final int THUMBNAIL_IMAGE_WIDTH = 50;
     private StickyListHeadersListView mStickyList;
     private ImageListAdapter mAdapter;
-    private SwipeRefreshLayout mRefreshLayout;
+//    private SwipeRefreshLayout mRefreshLayout;
 
     public ImageListFragment() {
     } //empty ctor as per Fragment docs
@@ -49,8 +48,8 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
         mAdapter = new ImageListAdapter(this.getActivity());
         mStickyList.setAdapter(mAdapter);
         mStickyList.setDrawingListUnderStickyHeader(false);
-        mRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
-        mRefreshLayout.setOnRefreshListener(this);
+//        mRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_layout);
+//        mRefreshLayout.setOnRefreshListener(this);
 
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
@@ -66,13 +65,13 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
                     intent.getAction().equals(MarsImagesApp.NOTES_CLEARED)) {
-                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
+//                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
                 mAdapter.setCount(0);
                 mAdapter.notifyDataSetChanged();
             } else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 mAdapter.setCount(EVERNOTE.getNotesCount());
                 mAdapter.notifyDataSetChanged();
-                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(false);
+//                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(false);
             } else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
                 String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
                 if (!selectionSource.equals(MarsImagesApp.LIST_SOURCE)) {
@@ -99,17 +98,6 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
     }
 
     @Override
-    public void onRefresh() {
-        if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
-        mAdapter.setCount(0);
-        mAdapter.notifyDataSetChanged();
-        Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
-        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
-
-        EvernoteMars.reloadNotes(getActivity());
-    }
-
-    @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long id) {
         mAdapter.setSelectedPosition(i);
         Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
@@ -117,6 +105,17 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
         intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.LIST_SOURCE);
         LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
     }
+
+//    @Override
+//    public void onRefresh() {
+//        if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
+//        mAdapter.setCount(0);
+//        mAdapter.notifyDataSetChanged();
+//        Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
+//        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
+//
+//        EvernoteMars.reloadNotes(getActivity());
+//    }
 
     private class ImageListAdapter extends BaseAdapter implements StickyListHeadersAdapter {
 
@@ -203,8 +202,11 @@ public class ImageListFragment extends Fragment implements SwipeRefreshLayout.On
             }
 
             if (i == EVERNOTE.getNotesCount() - 1) {
-                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
-                EVERNOTE.loadMoreNotes(getActivity());
+//                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
+                if (getActivity() instanceof ImageViewActivity) {
+                    ImageViewActivity activity = (ImageViewActivity)getActivity();
+                    activity.loadMoreImages();
+                }
             }
 
             return view;

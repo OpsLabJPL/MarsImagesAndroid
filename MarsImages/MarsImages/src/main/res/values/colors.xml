@@ -2,4 +2,8 @@
 <resources>
     <color name="pressed_color">#4d90fe</color>
     <color name="default_color">#ffffff</color>
+    <color name="almost_white">#b0b0b0</color>
+    <color name="somewhat_gray">#707070</color>
+    <color name="almost_black">#202020</color>
+    <color name="black">#000000</color>
 </resources>

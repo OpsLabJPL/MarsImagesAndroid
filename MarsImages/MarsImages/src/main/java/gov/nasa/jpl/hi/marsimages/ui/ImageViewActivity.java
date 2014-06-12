@@ -2,34 +2,37 @@ package gov.nasa.jpl.hi.marsimages.ui;
 
 
 import android.annotation.SuppressLint;
-import android.app.ActionBar;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaScannerConnection;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.view.GravityCompat;
 import android.support.v4.view.ViewPager;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.SearchView;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -48,8 +51,8 @@ import java.util.List;
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.Utils;
-import se.emilsjolander.stickylistheaders.StickyListHeadersListView;
 
+import static android.support.v7.app.ActionBar.OnNavigationListener;
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES_PREFERENCES_KEY;
@@ -57,21 +60,23 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.VIEW_PAGER_SOURCE;
 
 public class ImageViewActivity extends ActionBarActivity
-        implements ActionBar.OnNavigationListener {
+        implements OnNavigationListener {
 
     private static final String STATE_PAGE_NUMBER = "page_number";
+    private static final String STATE_DRAWER_OPEN = "drawer_open";
+    private static final String STATE_FULLSCREEN = "fullscreen";
 
-    private HackySlidingPaneLayout mSlidingPane;
     private ImagePagerAdapter mAdapter;
     private ViewPager mPager;
-    private ArrayAdapter<CharSequence> mSpinnerAdapter;
     private boolean needToSetViewPagerToPageZero = false;
-    private ActionBarHelper mActionBar;
-    private StickyListHeadersListView mList;
     private SearchView searchView;
     private MenuItem mSearchItem;
+    private ImageListFragment mListFragment;
+    private DrawerLayout mDrawer;
+    private ActionBarDrawerToggle mDrawerToggle;
+    private boolean fullscreen;
+    private WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
 
-    @SuppressLint("NewApi")
     @Override
     public void onCreate(Bundle savedInstanceState) {
 //        Utils.enableStrictMode();
@@ -84,8 +89,8 @@ public class ImageViewActivity extends ActionBarActivity
         filter.addAction(MarsImagesApp.NOTES_CLEARED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
-        mSlidingPane = (HackySlidingPaneLayout) findViewById(R.id.main_layout);
-        mSlidingPane.setCoveredFadeColor(0x00000000);
+        mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        mDrawer.setScrimColor(Color.TRANSPARENT);
 
         // Set up ViewPager and backing adapter
         mAdapter = new ImagePagerAdapter(getSupportFragmentManager());
@@ -107,46 +112,53 @@ public class ImageViewActivity extends ActionBarActivity
                 //try to load more notes when the last image view page is selected
                 int pageCount = mAdapter.getCount();
                 if (position >= pageCount - mPager.getOffscreenPageLimit() - 1)
-                    EVERNOTE.loadMoreNotes(ImageViewActivity.this);
+                    loadMoreImages();
             }
         });
 
-        mList = (StickyListHeadersListView) findViewById(R.id.image_list_view);
+        mListFragment = new ImageListFragment();
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.image_list_frame, mListFragment)
+                .commit();
 
-        mSpinnerAdapter = ArrayAdapter.createFromResource(this, R.array.missions, android.R.layout.simple_spinner_dropdown_item);
+        mDrawerToggle = new ActionBarDrawerToggle(
+                this,
+                mDrawer,
+                R.drawable.ic_drawer,
+                R.string.drawer_open,
+                R.string.drawer_close
+        ) {
+            public void onDrawerClosed(View view) {
+                super.onDrawerClosed(view);
+            }
+            public void onDrawerOpened(View drawerView) {
+                super.onDrawerOpened(drawerView);
+            }
+        };
+        mDrawer.setDrawerListener(mDrawerToggle);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
+        int v =  View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        getWindow().getDecorView().setSystemUiVisibility(v);
+        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+            @Override
+            public void onSystemUiVisibilityChange(int visibility) {
+                boolean fullscreenVisibility = (visibility & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) != 0;
+                if (fullscreenVisibility != isFullscreen())
+                    setFullscreen(fullscreenVisibility);
+            }
+        });
+        ArrayAdapter<CharSequence> mSpinnerAdapter = ArrayAdapter.createFromResource(this,
+                R.array.missions, android.R.layout.simple_spinner_dropdown_item);
         String[] missions = getResources().getStringArray(R.array.missions);
         List<String> missionList = Lists.newArrayList(missions);
         CharSequence missionName = MARS_IMAGES.getMissionName();
         int missionIndex = missionList.indexOf(missionName);
         getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
-        getActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
+        getSupportActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
         getSupportActionBar().setSelectedNavigationItem(missionIndex);
-
-        // Set up activity to go full screen
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        // Enable some additional newer visibility and ActionBar features to create a more
-        // immersive photo viewing experience
-        if (Utils.hasHoneycomb()) {
-            final ActionBar actionBar = getActionBar();
-
-            // Hide and show the ActionBar as the visibility changes
-//            mPager.setOnSystemUiVisibilityChangeListener(
-//                    new View.OnSystemUiVisibilityChangeListener() {
-//                        @Override
-//                        public void onSystemUiVisibilityChange(int vis) {
-//                            if ((vis & View.SYSTEM_UI_FLAG_LOW_PROFILE) != 0) {
-//                                actionBar.hide();
-//                            } else {
-//                                actionBar.show();
-//                            }
-//                        }
-//                    });
-
-            // Start low profile mode and hide ActionBar
-//            mPager.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
-//            actionBar.hide();
-        }
 
         if (savedInstanceState != null) {
             int selectedPage = savedInstanceState.getInt(STATE_PAGE_NUMBER, -1);
@@ -155,48 +167,80 @@ public class ImageViewActivity extends ActionBarActivity
                 mAdapter.notifyDataSetChanged();
                 mPager.setCurrentItem(selectedPage);
             }
+            if (savedInstanceState.getBoolean(STATE_DRAWER_OPEN, true))
+                mDrawer.openDrawer(GravityCompat.START);
+            else
+                mDrawer.closeDrawer(GravityCompat.START);
+
+            if (savedInstanceState.getBoolean(STATE_FULLSCREEN, false))
+                setFullscreen(true);
         }
 
-        if (Utils.hasJellyBeanMR2()) {
-            getActionBar().setHomeAsUpIndicator(
-                    getResources().getDrawable(R.drawable.ic_drawer));
-        }
-        mActionBar = createActionBarHelper();
-        mActionBar.init();
-        SliderListener sliderListener = new SliderListener();
-        mSlidingPane.setPanelSlideListener(sliderListener);
-        if (mList.isShown()) {
-            sliderListener.onPanelOpened(null);
-            resetLayoutParams(mList.getWidth());
-        } else {
-            sliderListener.onPanelClosed(null);
-            resetLayoutParams(0);
-        }
+        loadMoreImages();
+    }
 
-        EVERNOTE.loadMoreNotes(this);
+    protected void loadMoreImages() {
+        loadMoreImages(false);
+    }
+
+    private void loadMoreImages(boolean clearFirst) {
+        ConnectivityManager cm = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+        if (!isConnected) {
+            IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+            intentFilter.setPriority(100);
+            LocalBroadcastManager.getInstance(this).registerReceiver(mWifiStateReceiver, intentFilter);
+            Toast.makeText(this, "Unable to connect to the network.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        EVERNOTE.loadMoreNotes(this, clearFirst);
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // Sync the toggle state after onRestoreInstanceState has occurred.
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        mDrawerToggle.onConfigurationChanged(newConfig);
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(STATE_PAGE_NUMBER, mPager.getCurrentItem());
+        outState.putBoolean(STATE_DRAWER_OPEN, mDrawer.isDrawerOpen(GravityCompat.START));
+        outState.putBoolean(STATE_FULLSCREEN, isFullscreen());
     }
 
     @Override
     public boolean onNavigationItemSelected(int position, long itemId) {
         String[] missionNames = getResources().getStringArray(R.array.missions);
-        String missionName = missionNames[position];
+        final String missionName = missionNames[position];
         MARS_IMAGES.setMission(missionName, this);
-        SharedPreferences sharedPreferences = getSharedPreferences(MARS_IMAGES_PREFERENCES_KEY, MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(MISSION_NAME_PREFERENCE, missionName);
-        editor.commit();
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                SharedPreferences sharedPreferences = getSharedPreferences(MARS_IMAGES_PREFERENCES_KEY, MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString(MISSION_NAME_PREFERENCE, missionName);
+                editor.commit();
+                return null;
+            }
+        }.execute();
         return true;
     }
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (intent.getAction() == null) return;
+
             if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 Integer notesReturned = intent.getIntExtra(EvernoteMars.NUM_NOTES_RETURNED, 0);
                 Log.d("receiver", "Notes returned: " + notesReturned);
@@ -214,7 +258,7 @@ public class ImageViewActivity extends ActionBarActivity
             } else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
                 Integer imageIndex = intent.getIntExtra(MarsImagesApp.IMAGE_INDEX, 0);
                 String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
-                if (!selectionSource.equals(VIEW_PAGER_SOURCE)) {
+                if (selectionSource != null && !selectionSource.equals(VIEW_PAGER_SOURCE)) {
                     mPager.setCurrentItem(imageIndex);
                 }
             }
@@ -227,7 +271,7 @@ public class ImageViewActivity extends ActionBarActivity
         long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
         ImageLoader.getInstance().resume();
         if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
-            EVERNOTE.loadMoreNotes(this, true);
+            loadMoreImages(true);
     }
 
     @Override
@@ -240,6 +284,7 @@ public class ImageViewActivity extends ActionBarActivity
     @Override
     protected void onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mWifiStateReceiver);
         super.onDestroy();
     }
 
@@ -249,49 +294,57 @@ public class ImageViewActivity extends ActionBarActivity
         getMenuInflater().inflate(R.menu.image_view, menu);
 
         mSearchItem = menu.findItem(R.id.action_search);
-        searchView = (SearchView) mSearchItem.getActionView();
-        searchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
-            @SuppressLint("NewApi")
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (!hasFocus) {
-                    if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
-                    searchView.setQuery("", false);
-                } else {
-                    EvernoteMars.setSearchWords(null, ImageViewActivity.this);
-                    mPager.setCurrentItem(0);
-                }
-            }
-        });
+        if (mSearchItem != null) {
+            searchView = (SearchView) mSearchItem.getActionView();
+            if (searchView != null) {
+                searchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
+                    @SuppressLint("NewApi")
+                    @Override
+                    public void onFocusChange(View v, boolean hasFocus) {
+                        if (!hasFocus) {
+                            if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
+                            searchView.setQuery("", false);
+                        } else {
+                            EvernoteMars.setSearchWords(null, ImageViewActivity.this);
+                            mPager.setCurrentItem(0);
+                        }
+                    }
+                });
 
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                if (searchView != null) {
-                    searchView.setVisibility(View.INVISIBLE);
-                    searchView.setVisibility(View.VISIBLE);
-                }
-                Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
-                LocalBroadcastManager.getInstance(ImageViewActivity.this).sendBroadcast(intent);
-                EvernoteMars.setSearchWords(query, ImageViewActivity.this);
-                Log.d("search query", "user entered query " + query);
-                return false;
-            }
+                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+                        if (searchView != null) {
+                            searchView.setVisibility(View.INVISIBLE);
+                            searchView.setVisibility(View.VISIBLE);
+                        }
+                        Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
+                        LocalBroadcastManager.getInstance(ImageViewActivity.this).sendBroadcast(intent);
+                        EvernoteMars.setSearchWords(query, ImageViewActivity.this);
+                        Log.d("search query", "user entered query " + query);
+                        return false;
+                    }
 
-            @SuppressLint("NewApi")
-            @Override
-            public boolean onQueryTextChange(String query) {
-                if (query == null || query.isEmpty()) {
-                    EvernoteMars.setSearchWords(null, ImageViewActivity.this);
-                }
-                return false;
+                    @SuppressLint("NewApi")
+                    @Override
+                    public boolean onQueryTextChange(String query) {
+                        if (query == null || query.isEmpty()) {
+                            EvernoteMars.setSearchWords(null, ImageViewActivity.this);
+                        }
+                        return false;
+                    }
+                });
             }
-        });
+        }
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+
         switch (item.getItemId()) {
             case R.id.about:
                 createAboutThisAppActivity();
@@ -302,25 +355,8 @@ public class ImageViewActivity extends ActionBarActivity
             case R.id.save:
                 saveImageToGallery();
                 return true;
-            case android.R.id.home:
-                Log.d("home", "Home touched. slidable: " + mSlidingPane.isSlideable());
-                if (mSlidingPane.isOpen())
-                    mSlidingPane.closePane();
-                else
-                    mSlidingPane.openPane();
-                return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    private void resetLayoutParams(int bottomPaneWidth) {
-        ViewGroup.LayoutParams layoutParams = mPager.getLayoutParams();
-        final DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        final int width = displayMetrics.widthPixels;
-        layoutParams.width = width - bottomPaneWidth + 1;
-        Log.d("new-width", "setting width to " + layoutParams.width);
-        mPager.setLayoutParams(layoutParams);
     }
 
     private void createAboutThisAppActivity() {
@@ -341,6 +377,12 @@ public class ImageViewActivity extends ActionBarActivity
 
             @Override
             protected void onPostExecute(File jpegFile) {
+                if (jpegFile == null) {
+                    CharSequence text = "Error sharing Mars image, please try again.";
+                    Toast.makeText(ImageViewActivity.this, text, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 final Intent shareIntent = new Intent(android.content.Intent.ACTION_SEND);
                 shareIntent.setType("image/jpeg");
                 shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, imageSubject);
@@ -363,11 +405,8 @@ public class ImageViewActivity extends ActionBarActivity
 
             @Override
             protected void onPostExecute(Void aVoid) {
-                Context context = getApplicationContext();
                 CharSequence text = getString(R.string.gallery_saved);
-                int duration = Toast.LENGTH_SHORT;
-                Toast toast = Toast.makeText(context, text, duration);
-                toast.show();
+                Toast.makeText(ImageViewActivity.this, text, Toast.LENGTH_SHORT).show();
             }
         }.execute(thisNote, mPager.getCurrentItem());
     }
@@ -375,7 +414,30 @@ public class ImageViewActivity extends ActionBarActivity
     private File saveImageToExternalStorage(Note thisNote, Integer pageNumber) {
         String imageURL = thisNote.getResources().get(0).getAttributes().getSourceURL();
         ImageView imageView = (ImageView) mPager.findViewWithTag(getImageViewTag(pageNumber));
+        final ImageViewActivity activity = ImageViewActivity.this;
+        if (activity == null) return null;
+
+        if (imageView == null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    CharSequence text = "Error saving Mars image to gallery, please try again.";
+                    Toast.makeText(activity, text, Toast.LENGTH_SHORT).show();
+                }
+            });
+            return null;
+        }
         BitmapDrawable bitmapDrawable = (BitmapDrawable) imageView.getDrawable();
+        if (bitmapDrawable == null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    CharSequence text = "Error saving Mars image to gallery, please try again.";
+                    Toast.makeText(activity, text, Toast.LENGTH_SHORT).show();
+                }
+            });
+            return null;
+        }
         Bitmap bitmap = bitmapDrawable.getBitmap();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
@@ -404,6 +466,31 @@ public class ImageViewActivity extends ActionBarActivity
         return Integer.parseInt(tag.substring(9));
     }
 
+    public boolean isFullscreen() {
+        return fullscreen;
+    }
+
+    public void setFullscreen(boolean fullscreen) {
+        this.fullscreen = fullscreen;
+        List<Fragment> fragments = getSupportFragmentManager().getFragments();
+        int v = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        if (fullscreen) {
+            v |= View.SYSTEM_UI_FLAG_FULLSCREEN;
+            v |= View.SYSTEM_UI_FLAG_IMMERSIVE;
+            v |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(v);
+
+        for (Fragment fragment : fragments) {
+            if (fragment instanceof ImageViewFragment) {
+                ImageViewFragment imageview = (ImageViewFragment)fragment;
+                imageview.showCaption(!isFullscreen());
+            }
+        }
+    }
+
     public static class ImagePagerAdapter extends FragmentStatePagerAdapter {
 
         private int mPageCount = 0;
@@ -429,83 +516,19 @@ public class ImageViewActivity extends ActionBarActivity
         }
     }
 
-    /**
-     * Create a compatible helper that will manipulate the action bar if
-     * available.
-     */
-    private ActionBarHelper createActionBarHelper() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            return new ActionBarHelperICS();
-        } else {
-            return new ActionBarHelper();
-        }
-    }
-
-    /**
-     * Stub action bar helper; this does nothing.
-     */
-    private class ActionBarHelper {
-        public void init() {
-        }
-
-        @SuppressLint("NewApi")
-        public void onPanelClosed() {
-            if (Utils.hasJellyBeanMR2()) {
-                getActionBar().setHomeAsUpIndicator(
-                        getResources().getDrawable(R.drawable.ic_drawer));
+    public static class WifiStateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+            if (isConnected) {
+                Log.d("wifi state connected", "Wifi reconnected.");
+                LocalBroadcastManager.getInstance(context).unregisterReceiver(this);
+                EVERNOTE.hasNotesRemaining = true;
+                EVERNOTE.loadMoreNotes(context, false);
             }
-        }
-
-        @SuppressLint("NewApi")
-        public void onPanelOpened() {
-            if (Utils.hasJellyBeanMR2()) {
-                getActionBar().setHomeAsUpIndicator(
-                        getResources().getDrawable(R.drawable.abc_ic_ab_back_holo_dark));
-            }
-        }
-    }
-
-    /**
-     * Action bar helper for use on ICS and newer devices.
-     */
-    private class ActionBarHelperICS extends ActionBarHelper {
-        private final ActionBar mActionBar;
-
-        ActionBarHelperICS() {
-            mActionBar = getActionBar();
-        }
-
-        @SuppressLint("NewApi")
-        @Override
-        public void init() {
-            mActionBar.setDisplayHomeAsUpEnabled(true);
-            mActionBar.setHomeButtonEnabled(true);
-        }
-    }
-
-    /**
-     * This panel slide listener updates the action bar accordingly for each
-     * panel state.
-     */
-    private class SliderListener extends
-            HackySlidingPaneLayout.SimplePanelSlideListener {
-        @Override
-        public void onPanelOpened(View panel) {
-            mActionBar.onPanelOpened();
-            resetLayoutParams(mList.getWidth());
-            mPager.setCurrentItem(mPager.getCurrentItem());
-        }
-
-        @Override
-        public void onPanelClosed(View panel) {
-            mActionBar.onPanelClosed();
-            resetLayoutParams(0);
-            mPager.setCurrentItem(mPager.getCurrentItem());
-        }
-
-        @Override
-        public void onPanelSlide(View panel, float slideOffset) {
-            resetLayoutParams((int) (mList.getWidth() * slideOffset));
         }
     }
 }

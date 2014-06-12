@@ -48,7 +48,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
  * Created by mpowell on 5/4/14.
  */
 public class ImageViewFragment extends Fragment
-        implements HackyTouchListener, PhotoViewAttacher.OnViewTapListener {
+        implements PhotoViewAttacher.OnViewTapListener {
 
     private static final String IMAGE_DATA_EXTRA = "extra_image_data";
     public static final String ANAGLYPH = "Anaglyph";
@@ -63,8 +63,6 @@ public class ImageViewFragment extends Fragment
     private String imageViewTag;
     private PhotoViewAttacher mAttacher;
     private TextView mCaptionView;
-    private static boolean captionVisible = true;
-    private HackySlidingPaneLayout mLayout;
     private Button mSelectButton;
     private PorterDuffXfermode mXferMode = new PorterDuffXfermode(PorterDuff.Mode.LIGHTEN);
     private static final ColorMatrix redMatrix = new ColorMatrix(new float[]{
@@ -108,7 +106,7 @@ public class ImageViewFragment extends Fragment
             resourceNumber = savedInstanceState.getInt(STATE_RESOURCE_NUMBER, 0);
             imageNumber = savedInstanceState.getInt(STATE_IMAGE_NUMBER, 0);
             Note note = EVERNOTE.getNote(imageNumber);
-            if (note.getResources().size() > resourceNumber)
+            if (note != null && note.getResources().size() > resourceNumber)
                 mImageUrl = note.getResources().get(resourceNumber).getAttributes().getSourceURL();
         }
     }
@@ -120,12 +118,9 @@ public class ImageViewFragment extends Fragment
         mImageView = (ImageView) v.findViewById(R.id.imageView);
         mImageView.setTag(imageViewTag);
         setupPhotoViewAttacher();
-        mAttacher.setOnViewTapListener(this);
 
         mCaptionView = (TextView) v.findViewById(R.id.captionView);
         mSelectButton = (Button) v.findViewById(R.id.selectImageButton);
-        mLayout = (HackySlidingPaneLayout) getActivity().findViewById(R.id.main_layout);
-        mLayout.addHackyTouchListener(this);
 
         final Note note = EVERNOTE.getNote(imageNumber);
         if (note != null) {
@@ -143,8 +138,11 @@ public class ImageViewFragment extends Fragment
     }
 
     private void setupCaptionAndImageSelectionMenu(final Note note) {
-        mCaptionView.setAlpha(captionVisible ? 1 : 0);
-        mSelectButton.setAlpha(captionVisible ? 1 : 0);
+        if (getActivity() == null) return;
+
+        final boolean fullscreen = ((ImageViewActivity) getActivity()).isFullscreen();
+        mCaptionView.setAlpha(fullscreen ? 0 : 1);
+        mSelectButton.setAlpha(fullscreen ? 0 : 1);
 
         String caption = MARS_IMAGES.getMission().getCaptionText(note);
         mCaptionView.setText(caption);
@@ -218,16 +216,18 @@ public class ImageViewFragment extends Fragment
 
     private void setupPhotoViewAttacher() {
         if (mAttacher == null) {
-            mAttacher = new MyPhotoViewAttacher(mImageView);
+            mAttacher = new PhotoViewAttacher(mImageView);
             mAttacher.setMinimumScale(0.999f);
             mAttacher.setMediumScale(1.0f);
             mAttacher.setMaximumScale(8.0f);
+            mAttacher.setOnViewTapListener(this);
         }
     }
 
     private void teardownPhotoViewAttacher() {
         if (mAttacher != null) {
             mAttacher.cleanup();
+            mAttacher.setOnViewTapListener(null);
             mAttacher = null;
         }
     }
@@ -314,9 +314,7 @@ public class ImageViewFragment extends Fragment
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mLayout.removeHackyTouchListener(this);
         if (mAttacher != null) {
-            mAttacher.setOnPhotoTapListener(null);
             teardownPhotoViewAttacher();
         }
         if (mImageView != null) {
@@ -329,19 +327,23 @@ public class ImageViewFragment extends Fragment
 
     @Override
     public void onViewTap(View view, float v, float v2) {
-        if (captionVisible) {
-            captionVisible = false;
-            fadeOutCaptionView(0);
-        } else {
-            captionVisible = true;
+        ImageViewActivity activity = (ImageViewActivity)getActivity();
+        activity.setFullscreen(!activity.isFullscreen());
+    }
+
+    public void showCaption(boolean visible) {
+        if (mCaptionView == null || mSelectButton == null) return;
+
+        if (visible) {
             mCaptionView.setAlpha(1);
             mSelectButton.setAlpha(1);
-            //schedule a 3 second delay and then animate fade out to zero alpha
-            fadeOutCaptionView(3000);
+        } else {
+            mCaptionView.setAlpha(0);
+            mSelectButton.setAlpha(0);
         }
     }
 
-    private void fadeOutCaptionView(int delayMillis) {
+    protected void fadeOutCaptionView(int delayMillis) {
         AlphaAnimation anim = new AlphaAnimation(1.0f, 0.0f);
         anim.setAnimationListener(new Animation.AnimationListener() {
             @Override
@@ -364,28 +366,17 @@ public class ImageViewFragment extends Fragment
         mSelectButton.startAnimation(anim);
     }
 
-    @Override
-    public void moved() {
-        captionVisible = false;
-        mCaptionView.setAlpha(0);
-        mSelectButton.setAlpha(0);
-    }
-
     public Bitmap overlayImages(Bitmap left, Bitmap right) {
         Bitmap bmOverlay = Bitmap.createBitmap(left.getWidth(),
                 left.getHeight(), left.getConfig());
-
         Canvas canvas = new Canvas(bmOverlay);
         Paint paint = new Paint();
         paint.setColorFilter(redFilter);
-        canvas.drawBitmap(
-                left.copy(left.getConfig(), true), 0,
-                0, paint);
+        canvas.drawBitmap(left.copy(left.getConfig(), true), 0, 0, paint);
         paint.setColorFilter(blueFilter);
         paint.setXfermode(mXferMode);
         canvas.drawBitmap(right.copy(right.getConfig(), true), 0, 0, paint);
 
         return bmOverlay;
     }
-
 }

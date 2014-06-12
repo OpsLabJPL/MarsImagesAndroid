@@ -1,28 +1,23 @@
-<!-- A DrawerLayout is intended to be used as the top-level content view using match_parent for both width and height to consume the full space available. -->
-<gov.nasa.jpl.hi.marsimages.ui.HackySlidingPaneLayout
+<?xml version="1.0" encoding="utf-8"?>
+
+<gov.nasa.jpl.hi.marsimages.ui.HackyDrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_layout"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context="gov.nasa.jpl.hi.marsimages.ui.ImageViewActivity">
+    android:layout_height="match_parent">
 
-    <fragment
-        android:id="@+id/image_list_fragment"
-        android:name="gov.nasa.jpl.hi.marsimages.ui.ImageListFragment"
-        android:layout_width="@dimen/image_list_drawer_width"
-        android:layout_height="match_parent"
-        android:layout_gravity="left"
-        tools:layout="@layout/image_list_fragment" />
-
-    <android.support.v4.view.ViewPager xmlns:android="http://schemas.android.com/apk/res/android"
+    <android.support.v4.view.ViewPager
         android:id="@+id/pager"
         android:background="#FF000000"
-        android:layout_height="fill_parent"
-        android:layout_width="wrap_content"
-        android:layout_gravity="center">
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"/>
 
-    </android.support.v4.view.ViewPager>
+    <FrameLayout
+        android:layout_width="@dimen/image_list_drawer_width"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:id="@+id/image_list_frame">
+    </FrameLayout>
 
-</gov.nasa.jpl.hi.marsimages.ui.HackySlidingPaneLayout>
+</gov.nasa.jpl.hi.marsimages.ui.HackyDrawerLayout>
 

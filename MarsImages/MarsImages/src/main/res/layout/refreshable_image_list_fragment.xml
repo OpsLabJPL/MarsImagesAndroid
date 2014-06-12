@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<LinearLayout
+<!--This won't work because of Android bug 69794
+https://code.google.com/p/android/issues/detail?id=69074.
+Revisit when addressed.-->
+
+<android.support.v4.widget.SwipeRefreshLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="@dimen/image_list_drawer_width"
     android:layout_height="match_parent"
     android:layout_gravity="start"
-    android:id="@+id/list_layout">
+    android:id="@+id/swipe_layout">
 
     <se.emilsjolander.stickylistheaders.StickyListHeadersListView
         android:id="@+id/image_list_view"
@@ -14,4 +18,4 @@
         android:layout_gravity="start"
         android:layout_height="match_parent"/>
 
-</LinearLayout>
+</android.support.v4.widget.SwipeRefreshLayout>

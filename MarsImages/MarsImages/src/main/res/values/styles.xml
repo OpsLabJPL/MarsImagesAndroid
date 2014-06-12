@@ -11,4 +11,7 @@
         <item name="displayOptions">showHome|useLogo</item>
     </style>
 
+    <style name="RoundedGradientButton">
+        <item name="android:background">@drawable/rounded_gradient_button</item>
+    </style>
 </resources>

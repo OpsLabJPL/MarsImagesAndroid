@@ -11,5 +11,6 @@
     <dimen name="list_padding">10dp</dimen>
     <dimen name="thumbnail_image_width">50dp</dimen>
     <dimen name="header_height">25dp</dimen>
+    <dimen name="corner_radius">10dp</dimen>
 
 </resources>
