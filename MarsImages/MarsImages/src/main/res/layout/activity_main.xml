@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <android.support.v4.view.ViewPager
+    <gov.nasa.jpl.hi.marsimages.ui.HackyViewPager
         android:id="@+id/pager"
         android:background="#FF000000"
         android:layout_height="match_parent"
