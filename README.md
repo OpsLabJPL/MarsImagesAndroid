@@ -6,7 +6,7 @@ Mars image browsing app for Android to view the latest from NASA's robotic surfa
 Getting Started
 ===============
 
-The app is organized as an Eclipse Android project using the Android developer tools plus a unit testing project. The application is compatible with version 2.2 (Froyo) and up.
+The app is organized as an Android Studio (Gradle) project. The application is compatible with version 3.0 (Honeycomb) and up.
 
 Features
 ========
