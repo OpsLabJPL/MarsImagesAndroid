@@ -14,12 +14,18 @@ Jet Propulsion Laboratory, nor the names of its contributors may be
 used to endorse or promote products derived from this software
 without specific prior written permission.
 
-This product includes the Evernote SDK for Java version 1.23. The Evernote SDK for Java is freely distributable under the terms of a Free-BSD style license. For details see https://github.com/evernote/evernote-sdk-java
+This product includes the Evernote SDK for Java version 1.25.1. 
+The Evernote SDK for Java is freely distributable under the terms of a Free-BSD style license. 
+For details see https://github.com/evernote/evernote-sdk-java.
 
-This product includes the ActionBarSherlock library version 4.3.1 written by Jake Wharton. ActionBarSherlock is freely distributable under the Apache v2.0 license. For details see https://github.com/JakeWharton/ActionBarSherlock
+This product includes the Google Guava support library, redistributed under the Apache 2.0 open source license.
 
-This product includes Apache Commons libraries for Java including Commons Codec, Commons Lang, and Commons IO. These libraries are freely distributable under the Apache v2.0 license. For details see http://commons.apache.org/
+This product includes the PhotoView library for Android  written by Chris Banes and distributed under 
+the Apache 2.0 open source license. For details see https://github.com/chrisbanes/PhotoView.
 
-This product includes Apache HttpComponents library for Java. This library is freely distributable under the Apache v2.0 license. For details see http://hc.apache.org/
+This product includes the StickyListHeaders library for Android written by Emil S. Jolander and distributed under the 
+Apache 2.0 open source license. For details see https://github.com/emilsjolander/StickyListHeaders.
 
-This project includes the Simple Logging Facade for Java. This library is freely distributable under the MIT license. For details see http://www.slf4j.org/
+This product includes the UniversalImageLoader library for Android, (c) 2011-2014, Sergey Tarasevich and
+distributed under the Apache 2.0 open source license. For details see 
+https://github.com/nostra13/Android-Universal-Image-Loader.
