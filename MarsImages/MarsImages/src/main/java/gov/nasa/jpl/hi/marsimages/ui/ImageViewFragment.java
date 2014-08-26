@@ -15,6 +15,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -54,6 +55,7 @@ public class ImageViewFragment extends Fragment
     public static final String ANAGLYPH = "Anaglyph";
     private static final String STATE_IMAGE_NUMBER = "image_number";
     private static final String STATE_RESOURCE_NUMBER = "resource_number";
+    private static final String STATE_IMAGE_VIEW_TAG = "image_view_tag";
 
     private String mImageUrl;
     private boolean reloadImageDueToResultsChange = false;
@@ -105,6 +107,7 @@ public class ImageViewFragment extends Fragment
         if (savedInstanceState != null) {
             resourceNumber = savedInstanceState.getInt(STATE_RESOURCE_NUMBER, 0);
             imageNumber = savedInstanceState.getInt(STATE_IMAGE_NUMBER, 0);
+            imageViewTag = savedInstanceState.getString(STATE_IMAGE_VIEW_TAG);
             Note note = EVERNOTE.getNote(imageNumber);
             if (note != null && note.getResources().size() > resourceNumber)
                 mImageUrl = note.getResources().get(resourceNumber).getAttributes().getSourceURL();
@@ -135,6 +138,7 @@ public class ImageViewFragment extends Fragment
         super.onSaveInstanceState(outState);
         outState.putInt(STATE_RESOURCE_NUMBER, resourceNumber);
         outState.putInt(STATE_IMAGE_NUMBER, imageNumber);
+        outState.putString(STATE_IMAGE_VIEW_TAG, imageViewTag);
     }
 
     private void setupCaptionAndImageSelectionMenu(final Note note) {
@@ -327,6 +331,9 @@ public class ImageViewFragment extends Fragment
 
     @Override
     public void onViewTap(View view, float v, float v2) {
+        if (!Utils.hasKitKat())
+            return;
+
         ImageViewActivity activity = (ImageViewActivity)getActivity();
         activity.setFullscreen(!activity.isFullscreen());
     }
