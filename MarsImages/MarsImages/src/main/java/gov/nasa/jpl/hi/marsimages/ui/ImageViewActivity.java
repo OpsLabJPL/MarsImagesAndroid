@@ -355,8 +355,16 @@ public class ImageViewActivity extends ActionBarActivity
             case R.id.save:
                 saveImageToGallery();
                 return true;
+            case R.id.map:
+                createMapActivity();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void createMapActivity() {
+        Intent mapIntent = new Intent(MapActivity.INTENT_ACTION_MAP);
+        startActivity(mapIntent);
     }
 
     private void createAboutThisAppActivity() {
