@@ -7,6 +7,10 @@
         <!--android:menuCategory="system"-->
         <!--android:title="@string/menu_search"-->
         <!--android:icon="@drawable/ic_action_search"/>-->
+    <item android:id="@+id/clock"
+        android:title="Mars Time"
+        android:icon="@drawable/clock"
+        app:showAsAction="ifRoom"/>
     <item android:id="@+id/action_search"
         android:orderInCategory="5"
         android:title="Search"
