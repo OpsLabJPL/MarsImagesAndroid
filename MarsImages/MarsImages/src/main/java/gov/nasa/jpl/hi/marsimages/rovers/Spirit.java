@@ -10,6 +10,9 @@ import java.util.Date;
  */
 public class Spirit extends Rover.MER {
 
+    public static final float SPIRIT_WEST_LONGITUDE                   = 184.702f;
+    public static final long  SPIRIT_LANDING_SECONDS_SINCE_1970_EPOCH = 1073137591;
+
     public Spirit() {
         eyeIndex = 23;
         instrumentIndex = 1;
