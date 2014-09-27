@@ -19,6 +19,7 @@ import com.mapbox.mapboxsdk.overlay.TilesOverlay;
 import com.mapbox.mapboxsdk.tileprovider.MapTileLayerBase;
 import com.mapbox.mapboxsdk.tileprovider.MapTileLayerBasic;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.ITileLayer;
+import com.mapbox.mapboxsdk.tileprovider.tilesource.WebSourceTileLayer;
 import com.mapbox.mapboxsdk.views.MapView;
 import com.powellware.marsimages.R;
 
@@ -73,16 +74,19 @@ public class MapActivity extends Activity {
             }
             @Override
             protected void onPostExecute(Void aVoid) {
-                String tileURLPattern = tileSet+"/{z}/{x}/{y}.png";
                 BoundingBox bbox = new BoundingBox(
                         new LatLng(upperRightLat, upperRightLon), new LatLng(lowerLeftLat, lowerLeftLon));
-                ITileLayer mapTileLayer =
-                        new MarsWebSourceTileLayer("missionmap", tileURLPattern, bbox, minZoom, maxNativeZoom);
+                String tileURLPattern = tileSet+"/{z}/{x}/{y}.png";
                 MapView mapView = new MapView(MapActivity.this);
-                mapView.setTileSource(mapTileLayer);
-                mapView.setCenter(bbox.getCenter());
+                MarsWebSourceTileLayer ws =
+                        new MarsWebSourceTileLayer("mission map", tileURLPattern, bbox);
+                ws.setName("Mission Map")
+                        .setAttribution("NASA/JPL")
+                        .setMinimumZoomLevel(minZoom)
+                        .setMaximumZoomLevel(maxNativeZoom);
+                mapView.setTileSource(ws);
+                mapView.setCenter(new LatLng(centerLat, centerLon));
                 mapView.setZoom(defaultZoom);
-                mapView.invalidate();
                 frameLayout.addView(mapView);
             }
         }.execute(missionName);
@@ -98,17 +102,17 @@ public class MapActivity extends Activity {
         centerLat = center.getDouble("lat");
         centerLon = center.getDouble("lon");
         JSONObject upperLeft = jsonObject.getJSONObject("upperLeft");
-        upperLeftLat = center.getDouble("lat");
-        upperLeftLon = center.getDouble("lon");
+        upperLeftLat = upperLeft.getDouble("lat");
+        upperLeftLon = upperLeft.getDouble("lon");
         JSONObject upperRight = jsonObject.getJSONObject("upperRight");
-        upperRightLat = center.getDouble("lat");
-        upperRightLon = center.getDouble("lon");
+        upperRightLat = upperRight.getDouble("lat");
+        upperRightLon = upperRight.getDouble("lon");
         JSONObject lowerLeft = jsonObject.getJSONObject("lowerLeft");
-        lowerLeftLat = center.getDouble("lat");
-        lowerLeftLon = center.getDouble("lon");
+        lowerLeftLat = lowerLeft.getDouble("lat");
+        lowerLeftLon = lowerLeft.getDouble("lon");
         JSONObject lowerRight = jsonObject.getJSONObject("lowerRight");
-        lowerRightLat = center.getDouble("lat");
-        lowerRightLon = center.getDouble("lon");
+        lowerRightLat = lowerRight.getDouble("lat");
+        lowerRightLon = lowerRight.getDouble("lon");
         JSONObject pixelSize = jsonObject.getJSONObject("pixelSize");
         mapPixelWidth = pixelSize.getInt("width");
         mapPixelHeight = pixelSize.getInt("height");
