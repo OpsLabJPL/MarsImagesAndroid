@@ -1,0 +1,104 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    tools:context="gov.nasa.jpl.hi.marsimages.ui.MarsClockActivity"
+    android:background="@color/default_color">
+
+    <LinearLayout
+        android:id="@+id/earthTimeLinearLayout"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/oppyTimeLinearLayout"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="48dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Earth"
+            android:id="@+id/earthNameText"
+            android:layout_gravity="center_horizontal"
+            android:textAlignment="center"
+            android:textColor="@color/black"
+            android:textSize="@dimen/clock_font_size"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2014-256T12:00:00 UTC"
+            android:id="@+id/earthTimeText"
+            android:layout_gravity="center_horizontal"
+            android:textColor="@color/black"
+            android:textAlignment="center"
+            android:textSize="@dimen/clock_font_size" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:id="@+id/oppyTimeLinearLayout"
+        android:layout_marginBottom="48dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Opportunity"
+            android:id="@+id/oppyNameText"
+            android:layout_gravity="center_horizontal"
+            android:textAlignment="center"
+            android:textColor="@color/black"
+            android:textSize="@dimen/clock_font_size"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sol 3700 12:00:00"
+            android:id="@+id/oppyTimeText"
+            android:layout_gravity="center_horizontal"
+            android:textColor="@color/black"
+            android:textAlignment="center"
+            android:textSize="@dimen/clock_font_size" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/curioTimeLinearLayout"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/oppyTimeLinearLayout"
+        android:layout_centerHorizontal="true">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Curiosity"
+            android:id="@+id/curioNameText"
+            android:layout_gravity="center_horizontal"
+            android:textAlignment="center"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            android:textSize="@dimen/clock_font_size" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sol 800 12:00:00"
+            android:id="@+id/curioTimeText"
+            android:layout_gravity="center_horizontal"
+            android:textColor="@color/black"
+            android:textAlignment="center"
+            android:textSize="@dimen/clock_font_size" />
+    </LinearLayout>
+
+</RelativeLayout>

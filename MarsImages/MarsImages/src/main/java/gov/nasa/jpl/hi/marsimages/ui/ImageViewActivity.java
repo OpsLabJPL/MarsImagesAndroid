@@ -355,8 +355,16 @@ public class ImageViewActivity extends ActionBarActivity
             case R.id.save:
                 saveImageToGallery();
                 return true;
+            case R.id.clock:
+                createMarsTimeActivity();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void createMarsTimeActivity() {
+        Intent marsTimeIntent = new Intent(MarsClockActivity.INTENT_ACTION_MARS_TIME);
+        startActivity(marsTimeIntent);
     }
 
     private void createAboutThisAppActivity() {
