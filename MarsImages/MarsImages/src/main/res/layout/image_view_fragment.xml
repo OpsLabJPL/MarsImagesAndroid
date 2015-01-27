@@ -15,7 +15,7 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:contentDescription="@string/imageview_description"
-        style="@style/TextAppearance.AppCompat.Widget.Base.ActionBar.Menu"
+        style="@style/Base.TextAppearance.AppCompat.Widget.ActionBar.Menu"
         android:adjustViewBounds="true" />
 
     <TextView
