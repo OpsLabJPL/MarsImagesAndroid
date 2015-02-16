@@ -21,5 +21,6 @@
     <string name="drawer_close">Hide Image List</string>
     <string name="title_activity_mars_clock">MarsClockActivity</string>
     <string name="earth">Earth</string>
+    <string name="title_activity_map">Mission Map</string>
 
 </resources>

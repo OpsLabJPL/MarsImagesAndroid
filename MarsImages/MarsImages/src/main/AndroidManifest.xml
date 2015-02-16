@@ -34,6 +34,17 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="gov.nasa.jpl.hi.marsimages.ui.MapActivity"
+            android:exported="false"
+            android:label="Mars Mission Map"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <action android:name="gov.nasa.jpl.hi.marsimages.MAP"/>
+            </intent-filter>
+        </activity>
+
         <receiver android:name="gov.nasa.jpl.hi.marsimages.ui.ImageViewActivity$WifiStateReceiver">
             <intent-filter>
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
