@@ -46,11 +46,11 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
  */
 public class EvernoteMars {
 
-    public static EvernoteMars EVERNOTE = new EvernoteMars();
+    public static final EvernoteMars EVERNOTE = new EvernoteMars();
 
-    public static int TIMEOUT = 15000;
+    private static final int TIMEOUT = 15000;
 
-    public static final String BEGIN_NOTE_LOADING = "beginNoteLoading";
+    private static final String BEGIN_NOTE_LOADING = "beginNoteLoading";
     public static final String END_NOTE_LOADING = "endNoteLoading";
     public static final String NUM_NOTES_RETURNED = "numNotesReturned";
 
@@ -58,15 +58,14 @@ public class EvernoteMars {
     private static final String MSL_NOTEBOOK_ID = "0296f732-694d-4ccd-9f5b-5983dc98b9e0";
     private static final String SPIRIT_NOTEBOOK_ID = "f1a72415-56e7-4244-8e12-def9be9c512b";
 
-    private static int NOTE_PAGE_SIZE = 15;
-    private final IntentFilter mIntentFilter;
+    private static final int NOTE_PAGE_SIZE = 15;
 
     private NoteStore.Client noteStore;
     private UserStore.Client userStore;
     private PublicUserInfo userInfo;
     private String uriPrefix;
 
-    private static List<Note> notesArray = Lists.newArrayList();
+    private static final List<Note> notesArray = Lists.newArrayList();
 
     private static final Map<String, String> notebookIDs = Maps.newHashMap();
 
@@ -81,20 +80,19 @@ public class EvernoteMars {
     public boolean hasNotesRemaining = true;
 
     private EvernoteMars() {
-        mIntentFilter = new IntentFilter(MarsImagesApp.MISSION_CHANGED);
+        IntentFilter mIntentFilter = new IntentFilter(MarsImagesApp.MISSION_CHANGED);
+        BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
+                    searchWords = null;
+                    EvernoteMars.reloadNotes(context, true); //reset connection for new mission notebook
+                }
+            }
+        };
         LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(mMessageReceiver,
                 mIntentFilter);
     }
-
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED)) {
-                searchWords = null;
-                EvernoteMars.reloadNotes(context, true); //reset connection for new mission notebook
-            }
-        }
-    };
 
     public int getNotesCount() {
         return notesArray.size();
@@ -139,18 +137,18 @@ public class EvernoteMars {
         return imageUrl;
     }
 
-    public String getUriPrefix() {
+    String getUriPrefix() {
         return uriPrefix;
     }
 
-    public String getThumbnailURL(int position, int thumbnailSize) {
+    public String getThumbnailURL(int position) {
         String thumbnailUrl = null;
         if (position >= 0 && position < notesArray.size()) {
             Note note = notesArray.get(position);
             if (note.getResources().isEmpty())
                 return null;
             String guid = note.getResources().get(0).getGuid();
-            thumbnailUrl = getUriPrefix() + "thm/res/" + guid + "?size=" + thumbnailSize;
+            thumbnailUrl = getUriPrefix() + "thm/res/" + guid + "?size=" + gov.nasa.jpl.hi.marsimages.ui.ImageListFragment.THUMBNAIL_IMAGE_WIDTH;
         }
         return thumbnailUrl;
     }
@@ -201,7 +199,7 @@ public class EvernoteMars {
                     connect();
             } catch (Exception e) {
                 Log.w("service error", "Error connecting to Evernote: " + e);
-                suspendEvernoteQueries(30);
+                suspendEvernoteQueries();
                 Intent intent = new Intent(END_NOTE_LOADING);
                 intent.putExtra(NUM_NOTES_RETURNED, 0);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
@@ -232,7 +230,7 @@ public class EvernoteMars {
                 }
             } catch (Exception e) {
                 Log.w("service error", "Error querying Evernote: " + e);
-                suspendEvernoteQueries(30);
+                suspendEvernoteQueries();
                 Intent intent = new Intent(END_NOTE_LOADING);
                 intent.putExtra(NUM_NOTES_RETURNED, notesReturned);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
@@ -253,13 +251,13 @@ public class EvernoteMars {
         }
     }
 
-    private void suspendEvernoteQueries(final int timeInSeconds) {
+    private void suspendEvernoteQueries() {
         hasNotesRemaining = false;
         new Thread() {
             @Override
             public void run() {
                 try {
-                    sleep(timeInSeconds * 1000);
+                    sleep(30 * 1000);
                 } catch (InterruptedException e) {
                     //no need to handle
                 } finally {
@@ -287,7 +285,7 @@ public class EvernoteMars {
         return note;
     }
 
-    public static void reloadNotes(Context context) {
+    private static void reloadNotes(Context context) {
         reloadNotes(context, false);
     }
 
@@ -309,13 +307,14 @@ public class EvernoteMars {
 
     private String formatSearch(String text) {
         String[] words = text.split("\\s+");
-        StringBuffer formattedText = new StringBuffer();
+        StringBuilder formattedText = new StringBuilder();
         for (String w : words) {
             String word = w;
             int value = 0;
             try {
                 value = Integer.parseInt(word);
             } catch (NumberFormatException e) {
+                Log.w("search words", "Expected an integer value instead of "+word);
             }
             if (value > 0 && !word.endsWith("*")) {
                 word = String.format("\"Sol %05d\"", value);

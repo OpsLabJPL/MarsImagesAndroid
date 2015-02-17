@@ -22,19 +22,19 @@ public abstract class Rover {
     public static final String OPPORTUNITY = "Opportunity";
     public static final String SPIRIT = "Spirit";
 
-    public static final String SOL = "Sol";
-    public static final String LTST = "LTST";
-    public static final String RMC = "RMC";
+    static final String SOL = "Sol";
+    static final String LTST = "LTST";
+    static final String RMC = "RMC";
 
-    public static final double EARTH_SECS_PER_MARS_SEC = 1.027491252;
+    private static final double EARTH_SECS_PER_MARS_SEC = 1.027491252;
     private static final DateFormat DATE_FORMAT = SimpleDateFormat.getDateInstance();
-    protected static final String EPOCH_FORMAT = "yyyyMMddhh:mm:sszzz";
+    static final String EPOCH_FORMAT = "yyyyMMddhh:mm:sszzz";
 
-    public int instrumentIndex;
-    public int eyeIndex;
-    public int sampleTypeIndex;
+    int instrumentIndex;
+    int eyeIndex;
+    int sampleTypeIndex;
 
-    public Set<String> stereoInstruments = new HashSet<String>();
+    final Set<String> stereoInstruments = new HashSet<>();
 
     public abstract String getUser();
 
@@ -55,7 +55,7 @@ public abstract class Rover {
 
     public abstract int getSol(Note note);
 
-    public abstract Date getEpoch();
+    protected abstract Date getEpoch();
 
     public abstract String getDetailText(Note note);
 
@@ -63,12 +63,11 @@ public abstract class Rover {
 
     public abstract String getImageName(Resource resource);
 
-    public String getImageID(Resource resource) {
+    String getImageID(Resource resource) {
         String url = resource.getAttributes().getSourceURL();
         String[] tokens = url.split("[\\./]");
         int numTokens = tokens.length;
-        String imageid = tokens[numTokens - 2];
-        return imageid;
+        return tokens[numTokens - 2];
     }
 
     public abstract String[] stereoForImages(Note note);
@@ -149,15 +148,16 @@ public abstract class Rover {
             String[] tokens = title.split(" ");
             TitleState state = TitleState.START;
             for (String word : tokens) {
-                if (word.equals(SOL)) {
-                    state = TitleState.SOL_NUMBER;
-                    continue;
-                } else if (word.equals(LTST)) {
-                    state = TitleState.MARS_LOCAL_TIME;
-                    continue;
-                } else if (word.equals(RMC)) {
-                    state = TitleState.ROVER_MOTION_COUNTER;
-                    continue;
+                switch (word) {
+                    case SOL:
+                        state = TitleState.SOL_NUMBER;
+                        continue;
+                    case LTST:
+                        state = TitleState.MARS_LOCAL_TIME;
+                        continue;
+                    case RMC:
+                        state = TitleState.ROVER_MOTION_COUNTER;
+                        continue;
                 }
                 String[] indices;
                 switch (state) {
@@ -203,26 +203,28 @@ public abstract class Rover {
             String[] tokens = title.split(" ");
             TitleState state = TitleState.START;
             for (String word : tokens) {
-                if (word.equals(COURSE)) {
-                    mer.instrumentName = "Course Plot";
-                } else if (word.equals("Distance")) {
-                    state = TitleState.DISTANCE;
-                    continue;
-                } else if (word.equals("yaw")) {
-                    state = TitleState.YAW;
-                    continue;
-                } else if (word.equals("pitch")) {
-                    state = TitleState.PITCH;
-                    continue;
-                } else if (word.equals("roll")) {
-                    state = TitleState.ROLL;
-                    continue;
-                } else if (word.equals("tilt")) {
-                    state = TitleState.TILT;
-                    continue;
-                } else if (word.equals("RMC")) {
-                    state = TitleState.ROVER_MOTION_COUNTER;
-                    continue;
+                switch (word) {
+                    case COURSE:
+                        mer.instrumentName = "Course Plot";
+                        break;
+                    case "Distance":
+                        state = TitleState.DISTANCE;
+                        continue;
+                    case "yaw":
+                        state = TitleState.YAW;
+                        continue;
+                    case "pitch":
+                        state = TitleState.PITCH;
+                        continue;
+                    case "roll":
+                        state = TitleState.ROLL;
+                        continue;
+                    case "tilt":
+                        state = TitleState.TILT;
+                        continue;
+                    case "RMC":
+                        state = TitleState.ROVER_MOTION_COUNTER;
+                        continue;
                 }
                 String[] indices;
                 switch (state) {
@@ -260,7 +262,7 @@ public abstract class Rover {
         public String getImageName(Resource resource) {
             String imageid = getImageID(resource);
 
-            if (resource.getAttributes().getSourceURL().indexOf("False") != -1)
+            if (resource.getAttributes().getSourceURL().contains("False"))
                 return "Color";
 
             String instrument = imageid.substring(instrumentIndex, instrumentIndex + 1);

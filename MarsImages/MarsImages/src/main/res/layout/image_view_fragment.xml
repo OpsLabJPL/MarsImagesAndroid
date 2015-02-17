@@ -28,7 +28,7 @@
         android:background="#AA000000"
         android:textColor="#ffffffff"
         android:text=""
-        android:textSize="19dp" />
+        android:textSize="19sp" />
 
     <Button
         android:shape="rectangle"

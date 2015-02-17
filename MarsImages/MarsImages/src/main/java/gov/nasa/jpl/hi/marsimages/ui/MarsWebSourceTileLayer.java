@@ -9,10 +9,10 @@ import com.mapbox.mapboxsdk.tileprovider.tilesource.WebSourceTileLayer;
 /**
  * Created by mpowell on 9/20/14.
  */
-public class MarsWebSourceTileLayer extends WebSourceTileLayer {
+class MarsWebSourceTileLayer extends WebSourceTileLayer {
 
-    public MarsWebSourceTileLayer(String missionmap, String tileURLPattern, BoundingBox bbox) {
-        super(missionmap, tileURLPattern);
+    public MarsWebSourceTileLayer(String tileURLPattern, BoundingBox bbox) {
+        super("mission map", tileURLPattern);
         mBoundingBox = bbox; //override default world
         mCenter = bbox.getCenter(); //override default (0,0)
     }

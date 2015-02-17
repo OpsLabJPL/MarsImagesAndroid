@@ -44,7 +44,7 @@ public class Utils {
         return Build.VERSION.SDK_INT >= VERSION_CODES.FROYO;
     }
 
-    public static boolean hasGingerbread() {
+    private static boolean hasGingerbread() {
         return Build.VERSION.SDK_INT >= VERSION_CODES.GINGERBREAD;
     }
 

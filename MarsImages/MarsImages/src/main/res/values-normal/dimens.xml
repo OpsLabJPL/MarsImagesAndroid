@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="clock_font_size">21dp</dimen>
+    <dimen name="clock_font_size">21sp</dimen>
     <dimen name="clock_block_margin">30dp</dimen>
 </resources>

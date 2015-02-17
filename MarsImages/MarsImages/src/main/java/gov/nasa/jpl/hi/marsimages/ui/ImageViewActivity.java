@@ -71,11 +71,10 @@ public class ImageViewActivity extends ActionBarActivity
     private boolean needToSetViewPagerToPageZero = false;
     private SearchView searchView;
     private MenuItem mSearchItem;
-    private ImageListFragment mListFragment;
     private DrawerLayout mDrawer;
     private ActionBarDrawerToggle mDrawerToggle;
     private boolean fullscreen;
-    private WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
+    private final WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -116,7 +115,7 @@ public class ImageViewActivity extends ActionBarActivity
             }
         });
 
-        mListFragment = new ImageListFragment();
+        ImageListFragment mListFragment = new ImageListFragment();
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.image_list_frame, mListFragment)
                 .commit();
@@ -128,14 +127,8 @@ public class ImageViewActivity extends ActionBarActivity
                 mDrawer,
                 R.string.drawer_open,
                 R.string.drawer_close
-        ) {
-            public void onDrawerClosed(View view) {
-                super.onDrawerClosed(view);
-            }
-            public void onDrawerOpened(View drawerView) {
-                super.onDrawerOpened(drawerView);
-            }
-        };
+        ) { /* default implementation */ };
+
         mDrawer.setDrawerListener(mDrawerToggle);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setHomeButtonEnabled(true);
@@ -180,7 +173,7 @@ public class ImageViewActivity extends ActionBarActivity
         loadMoreImages();
     }
 
-    protected void loadMoreImages() {
+    void loadMoreImages() {
         loadMoreImages(false);
     }
 
@@ -237,7 +230,7 @@ public class ImageViewActivity extends ActionBarActivity
         return true;
     }
 
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction() == null) return;
@@ -432,7 +425,6 @@ public class ImageViewActivity extends ActionBarActivity
         String imageURL = thisNote.getResources().get(0).getAttributes().getSourceURL();
         ImageView imageView = (ImageView) mPager.findViewWithTag(getImageViewTag(pageNumber));
         final ImageViewActivity activity = ImageViewActivity.this;
-        if (activity == null) return null;
 
         if (imageView == null) {
             activity.runOnUiThread(new Runnable() {

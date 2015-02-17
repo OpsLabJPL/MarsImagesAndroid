@@ -10,7 +10,7 @@ import java.util.Date;
  */
 public class MarsTime {
 
-    public static final double DEG_TO_RAD = Math.PI/180.0;
+    private static final double DEG_TO_RAD = Math.PI/180.0;
     public static final double EARTH_SECS_PER_MARS_SEC = 1.027491252;
     public static final float CURIOSITY_WEST_LONGITUDE = 222.6f;
 
@@ -22,9 +22,9 @@ public class MarsTime {
 //    5 	0.0021 	2.1354 	15.704
 //    6 	0.0020 	2.4694 	95.528
 //    7 	0.0018 	32.8493 49.095
-    static float A[] = { 0.0071f, 0.0057f, 0.0039f, 0.0037f, 0.0021f, 0.0020f, 0.0018f };
-    static float tau[] = { 2.2353f, 2.7543f, 1.1177f, 15.7866f, 2.1354f, 2.4694f, 32.8493f };
-    static float psi[] = { 49.409f, 168.173f, 191.837f, 21.736f, 15.704f, 95.528f, 49.095f };
+    private static final float[] A = { 0.0071f, 0.0057f, 0.0039f, 0.0037f, 0.0021f, 0.0020f, 0.0018f };
+    private static final float[] tau = { 2.2353f, 2.7543f, 1.1177f, 15.7866f, 2.1354f, 2.4694f, 32.8493f };
+    private static final float[] psi = { 49.409f, 168.173f, 191.837f, 21.736f, 15.704f, 95.528f, 49.095f };
 
 /* TABLE OF LEAP SECONDS: ftp://maia.usno.navy.mil/ser7/tai-utc.dat
  1961 JAN  1 =JD 2437300.5  TAI-UTC=   1.4228180 S + (MJD - 37300.) X 0.001296 S
@@ -69,7 +69,7 @@ public class MarsTime {
  */
 
 /* return the TAI-UTC lookup table value of leap seconds for a given date */
-    public static float taiutc(Date date) {
+    private static float taiutc(Date date) {
         double julianDate = getJulianDate(date);
         if (julianDate >= 2456109.5)
             return 35.0f;
@@ -228,7 +228,7 @@ public class MarsTime {
         //LTST = LMST + EOT (24 h / 360°) = LMST + EOT (1 h / 15°)
         double ltst = lmst + eot / 15.0;
 
-        ArrayList<Object> times = new ArrayList<Object>();
+        ArrayList<Object> times = new ArrayList<>();
 
         times.add(jdut);
         times.add(tt_utc_diff);

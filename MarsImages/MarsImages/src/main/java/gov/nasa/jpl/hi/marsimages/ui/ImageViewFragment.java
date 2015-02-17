@@ -15,7 +15,6 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -52,7 +51,7 @@ public class ImageViewFragment extends Fragment
         implements PhotoViewAttacher.OnViewTapListener {
 
     private static final String IMAGE_DATA_EXTRA = "extra_image_data";
-    public static final String ANAGLYPH = "Anaglyph";
+    private static final String ANAGLYPH = "Anaglyph";
     private static final String STATE_IMAGE_NUMBER = "image_number";
     private static final String STATE_RESOURCE_NUMBER = "resource_number";
     private static final String STATE_IMAGE_VIEW_TAG = "image_view_tag";
@@ -66,7 +65,7 @@ public class ImageViewFragment extends Fragment
     private PhotoViewAttacher mAttacher;
     private TextView mCaptionView;
     private Button mSelectButton;
-    private PorterDuffXfermode mXferMode = new PorterDuffXfermode(PorterDuff.Mode.LIGHTEN);
+    private final PorterDuffXfermode mXferMode = new PorterDuffXfermode(PorterDuff.Mode.LIGHTEN);
     private static final ColorMatrix redMatrix = new ColorMatrix(new float[]{
             1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f});
@@ -207,9 +206,9 @@ public class ImageViewFragment extends Fragment
                 ImageLoader.getInstance().loadImage(leftAndRight[1], new SimpleImageLoadingListener() {
                     @Override
                     public void onLoadingComplete(String url, View view, Bitmap bitmap) {
-                        final Bitmap rightBitmap = bitmap;
+                        //bitmap is the right eye camera bitmap
                         BitmapDrawable anaglyphImage = new BitmapDrawable(getActivity().getResources(),
-                                overlayImages(leftBitmap, rightBitmap).copy(Bitmap.Config.ARGB_8888, false));
+                                overlayImages(leftBitmap, bitmap).copy(Bitmap.Config.ARGB_8888, false));
                         mImageView.setImageDrawable(anaglyphImage);
                         mAttacher.update();
                     }
@@ -262,7 +261,7 @@ public class ImageViewFragment extends Fragment
                 filter);
     }
 
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
@@ -373,7 +372,7 @@ public class ImageViewFragment extends Fragment
         mSelectButton.startAnimation(anim);
     }
 
-    public Bitmap overlayImages(Bitmap left, Bitmap right) {
+    Bitmap overlayImages(Bitmap left, Bitmap right) {
         Bitmap bmOverlay = Bitmap.createBitmap(left.getWidth(),
                 left.getHeight(), left.getConfig());
         Canvas canvas = new Canvas(bmOverlay);

@@ -21,25 +21,18 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 public class MapActivity extends Activity {
 
     public static final String INTENT_ACTION_MAP = "gov.nasa.jpl.hi.marsimages.MAP";
-    public static final String MAP = "MissionMap";
+    private static final String MAP = "MissionMap";
 
-    public String tileSet;
-    public int minZoom;
-    public int maxNativeZoom;
-    public int maxZoom;
-    public int defaultZoom;
-    public double centerLat;
-    public double centerLon;
-    public double upperLeftLat;
-    public double upperLeftLon;
-    public double upperRightLat;
-    public double upperRightLon;
-    public double lowerLeftLat;
-    public double lowerLeftLon;
-    public double lowerRightLat;
-    public double lowerRightLon;
-    public int mapPixelWidth;
-    public int mapPixelHeight;
+    private String tileSet;
+    private int minZoom;
+    private int maxNativeZoom;
+    private int defaultZoom;
+    private double centerLat;
+    private double centerLon;
+    private double upperRightLat;
+    private double upperRightLon;
+    private double lowerLeftLat;
+    private double lowerLeftLon;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,7 +59,7 @@ public class MapActivity extends Activity {
                 String tileURLPattern = tileSet+"/{z}/{x}/{y}.png";
                 MapView mapView = new MapView(MapActivity.this);
                 MarsWebSourceTileLayer ws =
-                        new MarsWebSourceTileLayer("mission map", tileURLPattern, bbox);
+                        new MarsWebSourceTileLayer(tileURLPattern, bbox);
                 ws.setName("Mission Map")
                         .setAttribution("NASA/JPL")
                         .setMinimumZoomLevel(minZoom)
@@ -83,14 +76,14 @@ public class MapActivity extends Activity {
         tileSet = jsonObject.getString("tileSet");
         minZoom = jsonObject.getInt("minZoom");
         maxNativeZoom = jsonObject.getInt("maxNativeZoom");
-        maxZoom = jsonObject.getInt("maxZoom");
+        int maxZoom = jsonObject.getInt("maxZoom");
         defaultZoom = jsonObject.getInt("defaultZoom");
         JSONObject center = jsonObject.getJSONObject("center");
         centerLat = center.getDouble("lat");
         centerLon = center.getDouble("lon");
         JSONObject upperLeft = jsonObject.getJSONObject("upperLeft");
-        upperLeftLat = upperLeft.getDouble("lat");
-        upperLeftLon = upperLeft.getDouble("lon");
+        double upperLeftLat = upperLeft.getDouble("lat");
+        double upperLeftLon = upperLeft.getDouble("lon");
         JSONObject upperRight = jsonObject.getJSONObject("upperRight");
         upperRightLat = upperRight.getDouble("lat");
         upperRightLon = upperRight.getDouble("lon");
@@ -98,10 +91,10 @@ public class MapActivity extends Activity {
         lowerLeftLat = lowerLeft.getDouble("lat");
         lowerLeftLon = lowerLeft.getDouble("lon");
         JSONObject lowerRight = jsonObject.getJSONObject("lowerRight");
-        lowerRightLat = lowerRight.getDouble("lat");
-        lowerRightLon = lowerRight.getDouble("lon");
+        double lowerRightLat = lowerRight.getDouble("lat");
+        double lowerRightLon = lowerRight.getDouble("lon");
         JSONObject pixelSize = jsonObject.getJSONObject("pixelSize");
-        mapPixelWidth = pixelSize.getInt("width");
-        mapPixelHeight = pixelSize.getInt("height");
+        int mapPixelWidth = pixelSize.getInt("width");
+        int mapPixelHeight = pixelSize.getInt("height");
     }
 }

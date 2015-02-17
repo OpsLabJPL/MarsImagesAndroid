@@ -12,12 +12,10 @@ public class AboutThisAppActivity extends Activity {
 
     public static final String INTENT_ACTION_ABOUT_THIS_APP = "gov.nasa.jpl.hi.marsimages.ABOUT_THIS_APP";
 
-    private WebView view;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        view = new WebView(this);
+        WebView view = new WebView(this);
         view.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(view);

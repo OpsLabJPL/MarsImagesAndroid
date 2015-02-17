@@ -1,6 +1,5 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
-import android.content.Intent;
 import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -54,8 +53,8 @@ public class MarsClockActivity extends ActionBarActivity {
                 Object[] marsTimes = MarsTime.getMarsTimes(curiosityTime, CURIOSITY_WEST_LONGITUDE);
                 Double msd = (Double) marsTimes[10];
                 Double mtc = (Double) marsTimes[11];
-                sol = (int)(msd.doubleValue() - (360-CURIOSITY_WEST_LONGITUDE) / 360) - 49268;
-                double mtcInHours = MarsTime.canonicalValue24(mtc.doubleValue() - CURIOSITY_WEST_LONGITUDE*24.0/360.0);
+                sol = (int)(msd - (360-CURIOSITY_WEST_LONGITUDE) / 360) - 49268;
+                double mtcInHours = MarsTime.canonicalValue24(mtc - CURIOSITY_WEST_LONGITUDE*24.0/360.0);
                 hour = (int) mtcInHours;
                 minute = (int) ((mtcInHours-hour)*60.0);
                 seconds = (int) ((mtcInHours-hour)*3600 - minute*60);
@@ -79,10 +78,6 @@ public class MarsClockActivity extends ActionBarActivity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        return item.getItemId() == R.id.action_settings || super.onOptionsItemSelected(item);
     }
 }

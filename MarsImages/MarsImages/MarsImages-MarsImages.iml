@@ -91,9 +91,9 @@
     <orderEntry type="library" exported="" name="okhttp-urlconnection-2.2.0" level="project" />
     <orderEntry type="library" exported="" name="disklrucache-2.0.2" level="project" />
     <orderEntry type="library" exported="" name="evernote-api-1.25.1" level="project" />
+    <orderEntry type="library" exported="" name="guava-18.0" level="project" />
     <orderEntry type="library" exported="" name="appcompat-v7-21.0.3" level="project" />
     <orderEntry type="library" exported="" name="support-annotations-21.0.3" level="project" />
-    <orderEntry type="library" exported="" name="guava-17.0" level="project" />
     <orderEntry type="library" exported="" name="stickylistheaders-2.3.0" level="project" />
     <orderEntry type="library" exported="" name="library-2.4.0" level="project" />
     <orderEntry type="library" exported="" name="mapbox-android-sdk-0.6.0" level="project" />

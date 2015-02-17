@@ -128,20 +128,21 @@ public class Curiosity extends Rover {
         return null;
     }
 
-    public Title tokenize(String noteTitle) {
+    Title tokenize(String noteTitle) {
         Title msl = new Title();
         String[] tokens = noteTitle.split(" ");
         TitleState state = TitleState.START;
         for (String word : tokens) {
-            if (word.equals(SOL)) {
-                state = TitleState.SOL_NUMBER;
-                continue;
-            } else if (word.equals(LTST)) {
-                state = TitleState.MARS_LOCAL_TIME;
-                continue;
-            } else if (word.equals(RMC)) {
-                state = TitleState.ROVER_MOTION_COUNTER;
-                continue;
+            switch (word) {
+                case SOL:
+                    state = TitleState.SOL_NUMBER;
+                    continue;
+                case LTST:
+                    state = TitleState.MARS_LOCAL_TIME;
+                    continue;
+                case RMC:
+                    state = TitleState.ROVER_MOTION_COUNTER;
+                    continue;
             }
             String[] indices;
             switch (state) {

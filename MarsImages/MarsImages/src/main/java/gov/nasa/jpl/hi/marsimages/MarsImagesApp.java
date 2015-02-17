@@ -35,7 +35,7 @@ public class MarsImagesApp extends Application {
     private static final String CURIOSITY_MISSION_NAME = "Curiosity";
     public static MarsImagesApp MARS_IMAGES;
     private String missionName;
-    private Map<String, Rover> missions = Maps.newHashMap();
+    private final Map<String, Rover> missions = Maps.newHashMap();
     private long pauseTimestamp;
 
     public MarsImagesApp() {
@@ -83,10 +83,9 @@ public class MarsImagesApp extends Application {
         return missionName;
     }
 
-    public void setMission(String newMissionName, Context context) {
-        String newMission = newMissionName;
-        if (!this.missionName.equals(newMission)) {
-            this.missionName = newMission;
+    public void setMission(final String newMissionName, Context context) {
+        if (!this.missionName.equals(newMissionName)) {
+            this.missionName = newMissionName;
             Intent intent = new Intent(MISSION_CHANGED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
         }

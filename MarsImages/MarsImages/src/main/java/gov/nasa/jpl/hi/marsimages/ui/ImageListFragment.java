@@ -32,7 +32,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
  */
 public class ImageListFragment extends Fragment implements AdapterView.OnItemClickListener {
 
-    private static final int THUMBNAIL_IMAGE_WIDTH = 50;
+    public static final int THUMBNAIL_IMAGE_WIDTH = 50;
     private StickyListHeadersListView mStickyList;
     private ImageListAdapter mAdapter;
 //    private SwipeRefreshLayout mRefreshLayout;
@@ -60,7 +60,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         return view;
     }
 
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
@@ -173,7 +173,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         @Override
         public View getView(int i, View recycledView, ViewGroup viewGroup) {
             ViewHolder holder;
-            View view = null;
+            View view;
             if (recycledView == null) {
                 holder = new ViewHolder();
                 view = inflater.inflate(R.layout.row, viewGroup, false);
@@ -196,7 +196,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
 
             holder.text.setText(MARS_IMAGES.getMission().getLabelText(EVERNOTE.getNote(i)));
             holder.detail.setText(MARS_IMAGES.getMission().getDetailText(EVERNOTE.getNote(i)));
-            String thumbnailURL = EVERNOTE.getThumbnailURL(i, THUMBNAIL_IMAGE_WIDTH);
+            String thumbnailURL = EVERNOTE.getThumbnailURL(i);
             if (thumbnailURL != null) {
                 ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
             }
