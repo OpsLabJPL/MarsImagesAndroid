@@ -44,4 +44,5 @@ dependencies {
     compile('com.mapbox.mapboxsdk:mapbox-android-sdk:0.6.0@aar') {
         transitive = true
     }
+    compile('org.apache.commons:commons-csv:1.0')
 }

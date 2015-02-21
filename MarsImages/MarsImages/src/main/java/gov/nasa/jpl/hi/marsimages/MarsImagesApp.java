@@ -5,12 +5,25 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 
 import com.google.common.collect.Maps;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import gov.nasa.jpl.hi.marsimages.rovers.Curiosity;
@@ -33,10 +46,12 @@ public class MarsImagesApp extends Application {
     public static final String MARS_IMAGES_PREFERENCES_KEY = "com.powellware.marsimages.MARS_IMAGES";
     public static final String MISSION_NAME_PREFERENCE = "mission_name_preference";
     private static final String CURIOSITY_MISSION_NAME = "Curiosity";
+    public static final String TAG = "MarsImagesApplication";
     public static MarsImagesApp MARS_IMAGES;
     private String missionName;
     private final Map<String, Rover> missions = Maps.newHashMap();
     private long pauseTimestamp;
+    private List<int[]> locations; //lazily initialized
 
     public MarsImagesApp() {
         MARS_IMAGES = this;
@@ -88,6 +103,7 @@ public class MarsImagesApp extends Application {
             this.missionName = newMissionName;
             Intent intent = new Intent(MISSION_CHANGED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+            locations = null;
         }
     }
 
@@ -98,5 +114,40 @@ public class MarsImagesApp extends Application {
     public long getPauseTimestamp() {
         return pauseTimestamp;
     }
+
+    public List<int[]> getLocations() {
+
+        if (locations != null) return locations;
+
+        String urlPrefix = getMission().getURLPrefix();
+        URL locationsURL = null;
+        try {
+            locationsURL = new URL(urlPrefix+"/locations/location_manifest.csv");
+            Log.d(TAG, "location url: %@" + locationsURL);
+
+            final Reader reader = new InputStreamReader(locationsURL.openStream());
+            final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+            try {
+                locations = new ArrayList<int[]>();
+                for (final CSVRecord record : parser) {
+                    final int siteIndex = Integer.parseInt(record.get(0));
+                    final int driveIndex = Integer.parseInt(record.get(1));
+                    locations.add(new int[] {siteIndex, driveIndex});
+                }
+            } finally {
+                parser.close();
+                reader.close();
+            }
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "Badly formatted URL for location manifest: "+locationsURL);
+            locations = Collections.EMPTY_LIST;
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading from location manifest URL: "+locationsURL);
+            locations = Collections.EMPTY_LIST;
+        }
+
+        return locations;
+    }
+
 }
 

@@ -128,6 +128,11 @@ public class Curiosity extends Rover {
         return null;
     }
 
+    @Override
+    public String getURLPrefix() {
+        return "https://msl-raws.s3.amazonaws.com";
+    }
+
     Title tokenize(String noteTitle) {
         Title msl = new Title();
         String[] tokens = noteTitle.split(" ");

@@ -5,12 +5,24 @@ import android.util.Log;
 import com.evernote.edam.type.Note;
 import com.evernote.edam.type.Resource;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -21,6 +33,8 @@ public abstract class Rover {
     public static final String CURIOSITY = "Curiosity";
     public static final String OPPORTUNITY = "Opportunity";
     public static final String SPIRIT = "Spirit";
+
+    public static final String TAG = "Rover";
 
     static final String SOL = "Sol";
     static final String LTST = "LTST";
@@ -57,6 +71,8 @@ public abstract class Rover {
 
     protected abstract Date getEpoch();
 
+    public abstract String getURLPrefix();
+
     public abstract String getDetailText(Note note);
 
     public abstract String getCaptionText(Note note);
@@ -71,6 +87,34 @@ public abstract class Rover {
     }
 
     public abstract String[] stereoForImages(Note note);
+
+    public List<CSVRecord> siteLocationData(int siteIndex) {
+
+        List<CSVRecord> locations = new ArrayList<CSVRecord>();
+        URL locationsURL = null;
+
+        try {
+            String sixDigitSite = String.format("%06d", siteIndex);
+            locationsURL = new URL(getURLPrefix() + "/locations/site_"+sixDigitSite+".csv");
+            Log.d(TAG, "location url: %@" + locationsURL);
+
+            final Reader reader = new InputStreamReader(locationsURL.openStream());
+            final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+            try {
+                for (final CSVRecord record : parser) {
+                    locations.add(record);
+                }
+            } finally {
+                parser.close();
+                reader.close();
+            }
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "Badly formatted URL for location manifest: " + locationsURL);
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading from location manifest URL: " + locationsURL);
+        }
+        return locations;
+    }
 
     /**
      * Created by mpowell on 5/3/14.

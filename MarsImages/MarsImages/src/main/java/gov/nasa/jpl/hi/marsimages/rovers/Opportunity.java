@@ -31,4 +31,9 @@ public class Opportunity extends Rover.MER {
         }
         return null;
     }
+
+    @Override
+    public String getURLPrefix() {
+        return "http://merpublic.s3.amazonaws.com";
+    }
 }
