@@ -21,7 +21,7 @@
     <item android:id="@+id/map"
         android:title="Map"
         android:orderInCategory="0"
-        android:icon="@drawable/map"
+        android:icon="@drawable/map_icon"
         app:showAsAction="ifRoom"/>
     <item android:id="@+id/about"
         android:menuCategory="system"
