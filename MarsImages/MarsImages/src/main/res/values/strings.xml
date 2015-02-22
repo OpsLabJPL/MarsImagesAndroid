@@ -22,5 +22,6 @@
     <string name="title_activity_mars_clock">MarsClockActivity</string>
     <string name="earth">Earth</string>
     <string name="title_activity_map">Mission Map</string>
+    <string name="title_activity_mosaic">MosaicActivity</string>
 
 </resources>

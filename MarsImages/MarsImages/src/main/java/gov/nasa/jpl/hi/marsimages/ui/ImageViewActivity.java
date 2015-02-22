@@ -355,6 +355,9 @@ public class ImageViewActivity extends ActionBarActivity
             case R.id.map:
                 createMapActivity();
                 return true;
+            case R.id.mosaic:
+                createMosaicActivity();
+                return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -372,6 +375,11 @@ public class ImageViewActivity extends ActionBarActivity
     private void createAboutThisAppActivity() {
         Intent aboutThisAppIntent = new Intent(AboutThisAppActivity.INTENT_ACTION_ABOUT_THIS_APP);
         startActivity(aboutThisAppIntent);
+    }
+
+    private void createMosaicActivity() {
+        Intent mosaicIntent = new Intent(MosaicActivity.INTENT_ACTION_MOSAIC);
+        startActivity(mosaicIntent);
     }
 
     private void shareImage() {

@@ -23,6 +23,11 @@
         android:orderInCategory="0"
         android:icon="@drawable/map_icon"
         app:showAsAction="ifRoom"/>
+    <item android:id="@+id/mosaic"
+        android:title="Mosaic"
+        android:orderInCategory="0"
+        android:icon="@drawable/panorama_icon"
+        app:showAsAction="ifRoom"/>
     <item android:id="@+id/about"
         android:menuCategory="system"
         android:orderInCategory="4"
