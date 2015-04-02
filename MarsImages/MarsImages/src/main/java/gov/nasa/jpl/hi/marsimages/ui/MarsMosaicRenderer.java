@@ -9,6 +9,7 @@ import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import com.evernote.edam.type.Note;
@@ -53,6 +54,8 @@ import rajawali.renderer.RajawaliRenderer;
  */
 public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouchListener {
 
+    public static final float MIN_ZOOM = 0.5f;
+    public static final float MAX_ZOOM = 5.0f;
     private PointLight mLight;
 //    private Sphere mSphere;
     private Plane mPlane;
@@ -63,6 +66,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
     private float mPreviousY = 0f;
     private float cameraRelativeXMotion = 0f;
     private float cameraRelativeYMotion = 0f;
+    private final ScaleGestureDetector mScaleDetector;
+    private float mScaleFactor = 1f;
 
 
     public MarsMosaicRenderer(Context context) {
@@ -70,6 +75,17 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         setFrameRate(60);
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         LocalBroadcastManager.getInstance(context).registerReceiver(mMessageReceiver, filter);
+        mScaleDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                float scaleFactor = detector.getScaleFactor();
+                Log.d(TAG, "scale factor: "+scaleFactor);
+                mScaleFactor *= scaleFactor;
+                // Don't let the object get too small or too large.
+                mScaleFactor = Math.max(MIN_ZOOM, Math.min(mScaleFactor, MAX_ZOOM));
+                return true;
+            }
+        });
     }
 
     protected void initScene() {
@@ -99,6 +115,9 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         mCamera.setRotX(mCamera.getRotX() - cameraRelativeYMotion * TOUCH_SCALE_FACTOR);
         mCamera.setRotY(mCamera.getRotY() - cameraRelativeXMotion * TOUCH_SCALE_FACTOR);
         cameraRelativeXMotion = cameraRelativeYMotion = 0f;
+
+        mCamera.setFieldOfView(45/mScaleFactor);
+        mCamera.setProjectionMatrix(mSurfaceView.getWidth(), mSurfaceView.getHeight());
 
 //        mPlane.setRotY(mPlane.getRotY() + 1);
     }
@@ -194,10 +213,13 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         // and other input controls. In this case, you are only
         // interested in events where the touch position changed.
 
+        // Let the ScaleGestureDetector inspect all events.
+        mScaleDetector.onTouchEvent(e);
+
         float x = e.getX();
         float y = e.getY();
         Log.d(TAG, "Motion event: "+x+", "+y);
-        switch (e.getAction()) {
+        switch (e.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
                 mPreviousX = e.getX();
                 mPreviousY = e.getY();

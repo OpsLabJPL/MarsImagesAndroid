@@ -5,6 +5,7 @@ import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -25,6 +26,8 @@ public class MosaicActivity extends RajawaliFragmentActivity {
         super.onCreate(savedInstanceState);
         mRenderer = new MarsMosaicRenderer(this);
         mRenderer.setSurfaceView(mSurfaceView);
+        mSurfaceView.setOnTouchListener(mRenderer);
+
         super.setRenderer(mRenderer);
     }
 
@@ -49,4 +52,5 @@ public class MosaicActivity extends RajawaliFragmentActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
 }
