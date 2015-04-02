@@ -8,6 +8,8 @@ import android.opengl.GLSurfaceView;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 
 import com.evernote.edam.type.Note;
 
@@ -41,6 +43,7 @@ import rajawali.lights.ALight;
 import rajawali.lights.DirectionalLight;
 import rajawali.lights.PointLight;
 import rajawali.materials.DiffuseMaterial;
+import rajawali.math.Number3D;
 import rajawali.primitives.Plane;
 import rajawali.primitives.Sphere;
 import rajawali.renderer.RajawaliRenderer;
@@ -48,13 +51,19 @@ import rajawali.renderer.RajawaliRenderer;
 /**
  * Created by mpowell on 3/21/15.
  */
-public class MarsMosaicRenderer extends RajawaliRenderer {
+public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouchListener {
 
     private PointLight mLight;
 //    private Sphere mSphere;
     private Plane mPlane;
     private int[] rmc;
     private Map<String, Note> photosInScene;
+    private final float TOUCH_SCALE_FACTOR = .05f;
+    private float mPreviousX = 0f;
+    private float mPreviousY = 0f;
+    private float cameraRelativeXMotion = 0f;
+    private float cameraRelativeYMotion = 0f;
+
 
     public MarsMosaicRenderer(Context context) {
         super(context);
@@ -87,7 +96,11 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
     public void onDrawFrame(GL10 glUnused) {
         super.onDrawFrame(glUnused);
-        mPlane.setRotY(mPlane.getRotY() + 1);
+        mCamera.setRotX(mCamera.getRotX() - cameraRelativeYMotion * TOUCH_SCALE_FACTOR);
+        mCamera.setRotY(mCamera.getRotY() - cameraRelativeXMotion * TOUCH_SCALE_FACTOR);
+        cameraRelativeXMotion = cameraRelativeYMotion = 0f;
+
+//        mPlane.setRotY(mPlane.getRotY() + 1);
     }
 
     public void addImagesToScene(int[] rmc) {
@@ -174,4 +187,35 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             }
         }
     };
+
+    @Override
+    public boolean onTouch(View v, MotionEvent e) {
+        // MotionEvent reports input details from the touch screen
+        // and other input controls. In this case, you are only
+        // interested in events where the touch position changed.
+
+        float x = e.getX();
+        float y = e.getY();
+        Log.d(TAG, "Motion event: "+x+", "+y);
+        switch (e.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mPreviousX = e.getX();
+                mPreviousY = e.getY();
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                cameraRelativeXMotion += x - mPreviousX;
+                cameraRelativeYMotion += y - mPreviousY;
+
+                mPreviousX = x;
+                mPreviousY = y;
+                break;
+
+            case MotionEvent.ACTION_UP:
+                mPreviousX = 0f;
+                mPreviousY = 0f;
+                break;
+        }
+        return true;
+    }
 }
