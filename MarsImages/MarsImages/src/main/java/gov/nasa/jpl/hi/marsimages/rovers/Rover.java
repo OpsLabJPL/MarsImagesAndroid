@@ -8,6 +8,9 @@ import com.evernote.edam.type.Resource;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -24,6 +27,11 @@ import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import gov.nasa.jpl.hi.marsimages.models.CameraModel;
+import gov.nasa.jpl.hi.marsimages.models.M;
+
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 
 /**
  * Created by mpowell on 4/12/14.
@@ -79,6 +87,10 @@ public abstract class Rover {
 
     public abstract String getImageName(Resource resource);
 
+    protected abstract double getCameraFOV(String cameraId);
+
+    protected abstract String getCameraId(String imageID);
+
     String getImageID(Resource resource) {
         String url = resource.getAttributes().getSourceURL();
         String[] tokens = url.split("[\\./]");
@@ -87,6 +99,31 @@ public abstract class Rover {
     }
 
     public abstract String[] stereoForImages(Note note);
+
+    public JSONArray modelJson(Note note) {
+        String cameraModelJson = note.getResources().get(0).getAttributes().getCameraModel();
+        if (cameraModelJson != null && cameraModelJson.length() > 0) {
+            try {
+                return new JSONArray(cameraModelJson);
+            } catch (JSONException e) {
+                Log.e(TAG, "Bad json in image note " + note.getTitle() + " " + e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    public double fieldOfView(Note image) {
+        String imageID = getImageID(image.getResources().get(0));
+        String cameraId = getCameraId(imageID);
+        return getCameraFOV(cameraId);
+    }
+
+    public static boolean includedInMosaic(Note note) {
+        String title = note.getTitle();
+        return title.contains("Navcam") ||
+                title.contains("Mastcam Left") ||
+                title.contains("Pancam");
+    }
 
     public List<CSVRecord> siteLocationData(int siteIndex) {
 
@@ -116,6 +153,21 @@ public abstract class Rover {
         return locations;
     }
 
+    public double[] localLevelQuaternion(int siteIndex, int driveIndex) {
+        List<CSVRecord> locationData = siteLocationData(siteIndex);
+        double[] q = new double[4];
+        for (CSVRecord location : locationData) {
+            if (location.size() >= 5 && driveIndex == Integer.parseInt(location.get(0))) {
+                q[0] = Double.parseDouble(location.get(1));
+                q[1] = Double.parseDouble(location.get(2));
+                q[2] = Double.parseDouble(location.get(3));
+                q[3] = Double.parseDouble(location.get(4));
+                break;
+            }
+        }
+        return q;
+    }
+
     /**
      * Created by mpowell on 5/3/14.
      */
@@ -136,6 +188,26 @@ public abstract class Rover {
             TILT,
             ROVER_MOTION_COUNTER
         }
+
+        @Override
+        protected String getCameraId(String imageId) {
+            if (imageId.contains("Sol")) { //Color Pancam image IDs begin with "Sol"...
+                return "P";
+            }
+            return imageId.substring(1,2);
+        }
+
+        @Override
+        protected double getCameraFOV(String cameraId) {
+            char camera = cameraId.charAt(0);
+            if (camera == 'N')
+                return 0.78539816;
+            else if (camera == 'P')
+                return 0.27925268;
+            Log.e(TAG, "Unexpected camera id for FOV check: "+cameraId);
+            return 0;
+        }
+
 
         @Override
         public String getSortableImageFilename(String sourceURL) {

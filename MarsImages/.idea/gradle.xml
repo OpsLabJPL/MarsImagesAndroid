@@ -10,6 +10,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/MarsImages" />
+            <option value="$PROJECT_DIR$/Rajawali" />
           </set>
         </option>
       </GradleProjectSettings>

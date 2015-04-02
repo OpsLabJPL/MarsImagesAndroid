@@ -78,6 +78,27 @@ public class Curiosity extends Rover {
     }
 
     @Override
+    protected double getCameraFOV(String cameraId) {
+        if (cameraId.charAt(0) == 'N')
+            return 0.785398163;
+        else if (cameraId.equals("ML"))
+            return 0.261799388;
+        else if (cameraId.equals("MR"))
+            return 0.087266463;
+        Log.e(TAG, "Unexpected camera id for FOV check "+cameraId);
+        return 0;
+    }
+
+    @Override
+    protected String getCameraId(String imageId) {
+        char c = imageId.charAt(0);
+        if (c >= '0' && c <= '9') {
+            return imageId.substring(4,6);
+        }
+        return imageId.substring(0, 2);
+    }
+
+    @Override
     public String[] stereoForImages(Note note) {
         if (note == null || note.getResources().size() == 0)
             return new String[0];

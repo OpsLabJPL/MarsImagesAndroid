@@ -139,7 +139,7 @@ public class MapActivity extends Activity {
     private void loadLatestTraversePath() {
         points = new ArrayList<LatLng>();
         rmcsForPoints = new HashMap<Integer, int[]>();
-        List<int[]> locationManifest = MARS_IMAGES.getLocations(); //write this
+        List<int[]> locationManifest = MARS_IMAGES.getLocations();
         int locationCount = locationManifest.size();
         if (locationCount > 0) {
             latestSiteIndex = locationManifest.get(locationCount-1)[0];

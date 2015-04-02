@@ -1,33 +1,32 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
-import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
-import android.support.v4.app.Fragment;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.os.Build;
 
 import com.powellware.marsimages.R;
 
-public class MosaicActivity extends ActionBarActivity {
+import rajawali.RajawaliFragment;
+import rajawali.RajawaliFragmentActivity;
+
+public class MosaicActivity extends RajawaliFragmentActivity {
 
     public static final String INTENT_ACTION_MOSAIC = "gov.nasa.jpl.hi.marsimages.MOSAIC";
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_mosaic);
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new PlaceholderFragment())
-                    .commit();
-        }
-    }
+    private MarsMosaicRenderer mRenderer;
 
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+        mRenderer = new MarsMosaicRenderer(this);
+        mRenderer.setSurfaceView(mSurfaceView);
+        super.setRenderer(mRenderer);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -49,21 +48,5 @@ public class MosaicActivity extends ActionBarActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment {
-
-        public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_mosaic, container, false);
-            return rootView;
-        }
     }
 }

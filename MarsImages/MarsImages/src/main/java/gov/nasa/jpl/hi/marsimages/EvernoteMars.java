@@ -58,7 +58,7 @@ public class EvernoteMars {
     private static final String MSL_NOTEBOOK_ID = "0296f732-694d-4ccd-9f5b-5983dc98b9e0";
     private static final String SPIRIT_NOTEBOOK_ID = "f1a72415-56e7-4244-8e12-def9be9c512b";
 
-    private static final int NOTE_PAGE_SIZE = 15;
+    public static final int NOTE_PAGE_SIZE = 15;
 
     private NoteStore.Client noteStore;
     private UserStore.Client userStore;
@@ -105,9 +105,51 @@ public class EvernoteMars {
             return null;
     }
 
+    public List<Note> getNotes() { return notesArray; }
+
     public void loadMoreNotes(Context context, boolean clearNotes) {
         new NoteLoaderTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, context, getNotesCount(), clearNotes);
     }
+
+    public int[] getNearestRMC() {
+        int user_site = 0;
+        int user_drive = 0;
+
+        //find the RMC of the newest image/note
+        for (Note note : notesArray) {
+            String title = note.getTitle();
+            if (!title.contains("RMC")) {
+                continue;
+            }
+            String rmcString = title.substring(title.length()-13);
+            String siteString = rmcString.substring(0,6);
+            String driveString = rmcString.substring(7,13);
+            user_site = Integer.parseInt(siteString);
+            user_drive = Integer.parseInt(driveString);
+            break;
+        }
+
+        //find the RMC in locations closest to the RMC of the newest image
+        List<int[]> locations = MARS_IMAGES.getLocations();
+        int[] lastLocation = locations.get(locations.size()-1);
+        int siteIndex = lastLocation[0];
+        int driveIndex = lastLocation[1];
+
+        if (user_site != 0 || user_drive != 0) {
+            for (int i = locations.size()-1; i >=0; i--) {
+                int[] location = locations.get(i);
+                int aSiteIndex = location[0];
+                int aDriveIndex = location[1];
+                if (aSiteIndex*100000+aDriveIndex < user_site*100000+user_drive)
+                    break;
+                siteIndex = aSiteIndex;
+                driveIndex = aDriveIndex;
+            }
+        }
+
+        return new int[] { siteIndex, driveIndex };
+    }
+
 
     private void connect() throws TException, EDAMSystemException, EDAMUserException, EDAMNotFoundException {
         if (noteStore == null) {
@@ -176,8 +218,12 @@ public class EvernoteMars {
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
             }
 
-            if (!hasNotesRemaining)
+            if (!hasNotesRemaining) {
+                Intent intent = new Intent(END_NOTE_LOADING);
+                intent.putExtra(NUM_NOTES_RETURNED, 0);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                 return null;
+            }
 
             ConnectivityManager cm =
                     (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -285,11 +331,11 @@ public class EvernoteMars {
         return note;
     }
 
-    private static void reloadNotes(Context context) {
+    public static void reloadNotes(Context context) {
         reloadNotes(context, false);
     }
 
-    private static void reloadNotes(Context context, boolean resetConnection) {
+    public static void reloadNotes(Context context, boolean resetConnection) {
         EVERNOTE.hasNotesRemaining = true;
         if (resetConnection) {
             EVERNOTE.noteStore = null;
@@ -300,9 +346,9 @@ public class EvernoteMars {
         EVERNOTE.loadMoreNotes(context, true);
     }
 
-    public static void setSearchWords(String searchWords, Activity activity) {
+    public static void setSearchWords(String searchWords, Context context) {
         EvernoteMars.searchWords = searchWords;
-        EvernoteMars.reloadNotes(activity);
+        EvernoteMars.reloadNotes(context);
     }
 
     private String formatSearch(String text) {

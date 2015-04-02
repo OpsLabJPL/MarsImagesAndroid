@@ -1,1 +1,2 @@
-include ':MarsImages'
+include ':MarsImages', ':Rajawali'
+include ':Rajawali'
