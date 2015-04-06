@@ -87,11 +87,17 @@ public abstract class Rover {
 
     public abstract String getImageName(Resource resource);
 
-    protected abstract double getCameraFOV(String cameraId);
+    public abstract double getCameraFOV(String cameraId);
 
-    protected abstract String getCameraId(String imageID);
+    public abstract String getCameraId(String imageID);
 
-    String getImageID(Resource resource) {
+    public abstract float getMastX();
+
+    public abstract float getMastY();
+
+    public abstract float getMastZ();
+
+    public String getImageID(Resource resource) {
         String url = resource.getAttributes().getSourceURL();
         String[] tokens = url.split("[\\./]");
         int numTokens = tokens.length;
@@ -168,6 +174,8 @@ public abstract class Rover {
         return q;
     }
 
+    public abstract int getLayer(String cameraId, String imageId);
+
     /**
      * Created by mpowell on 5/3/14.
      */
@@ -190,15 +198,24 @@ public abstract class Rover {
         }
 
         @Override
-        protected String getCameraId(String imageId) {
+        public String getCameraId(String imageId) {
             if (imageId.contains("Sol")) { //Color Pancam image IDs begin with "Sol"...
                 return "P";
             }
             return imageId.substring(1,2);
         }
 
+        public int getLayer(String cameraId, String imageId) {
+            if (cameraId.charAt(0) == 'N') {
+                return 3;
+            } else if (!imageId.contains("Sol")) {
+                return 2;
+            }
+            return 1;
+        }
+
         @Override
-        protected double getCameraFOV(String cameraId) {
+        public double getCameraFOV(String cameraId) {
             char camera = cameraId.charAt(0);
             if (camera == 'N')
                 return 0.78539816;
@@ -208,6 +225,17 @@ public abstract class Rover {
             return 0;
         }
 
+        public float getMastX() {
+            return 0.456f;
+        }
+
+        public float getMastY() {
+            return 0.026f;
+        }
+
+        public float getMastZ() {
+            return -1.0969f;
+        }
 
         @Override
         public String getSortableImageFilename(String sourceURL) {

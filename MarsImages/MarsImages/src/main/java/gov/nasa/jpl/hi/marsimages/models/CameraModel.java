@@ -17,7 +17,7 @@ public abstract class CameraModel implements Model {
 
     public abstract int[] size();
 
-    public Model getModel(JSONObject modelJSON) {
+    public static Model getModel(JSONArray modelJSON) {
         Model returnedModel = null;
         JSONArray c, a, h, v, o, r, e;
         int mtype;
@@ -25,18 +25,15 @@ public abstract class CameraModel implements Model {
         int width = 0, height = 0;
         String type = null;
         try {
-            type = modelJSON.getString("type");
-            JSONObject comps = modelJSON.getJSONObject("components");
-            JSONArray area = modelJSON.getJSONArray("area");
+            JSONObject imageDimensions = modelJSON.getJSONObject(0);
+            JSONObject geometricModel = modelJSON.getJSONObject(1);
+            type = geometricModel.getString("type");
+            JSONObject comps = geometricModel.getJSONObject("components");
+            JSONArray area = imageDimensions.getJSONArray("area");
             c = comps.getJSONArray("c");
             a = comps.getJSONArray("a");
             h = comps.getJSONArray("h");
             v = comps.getJSONArray("v");
-            o = comps.getJSONArray("o");
-            r = comps.getJSONArray("r");
-            e = comps.getJSONArray("e");
-            mtype = comps.getInt("t");
-            mparm = comps.getDouble("p");
             width = area.getInt(0);
             height = area.getInt(1);
 
@@ -48,6 +45,8 @@ public abstract class CameraModel implements Model {
                 model.setV(v.getDouble(0), v.getDouble(1), v.getDouble(2));
                 returnedModel = model;
             } else if ("CAHVOR".equals(type)) {
+                o = comps.getJSONArray("o");
+                r = comps.getJSONArray("r");
                 CAHVOR model = new CAHVOR();
                 model.setC(c.getDouble(0), c.getDouble(1), c.getDouble(2));
                 model.setA(a.getDouble(0), a.getDouble(1), a.getDouble(2));
@@ -57,6 +56,11 @@ public abstract class CameraModel implements Model {
                 model.setR(r.getDouble(0), r.getDouble(1), r.getDouble(2));
                 returnedModel = model;
             } else if ("CAHVORE".equals(type)) {
+                o = comps.getJSONArray("o");
+                r = comps.getJSONArray("r");
+                e = comps.getJSONArray("e");
+                mtype = comps.getInt("t");
+                mparm = comps.getDouble("p");
                 CAHVORE model = new CAHVORE();
                 model.setC(c.getDouble(0), c.getDouble(1), c.getDouble(2));
                 model.setA(a.getDouble(0), a.getDouble(1), a.getDouble(2));
@@ -83,9 +87,10 @@ public abstract class CameraModel implements Model {
         return returnedModel;
     }
 
-    public int[] origin(JSONObject modelJson) {
+    public int[] origin(JSONArray modelJson) {
         try {
-            JSONArray comps = modelJson.getJSONArray("origin");
+            JSONObject imageDimensions = modelJson.getJSONObject(0);
+            JSONArray comps = imageDimensions.getJSONArray("origin");
             if (comps != null) {
                 int x = comps.getInt(0);
                 int y = comps.getInt(1);

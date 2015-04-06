@@ -31,7 +31,7 @@ public class CAHV extends CameraModel {
     }
 
     public void setH(double h0, double h1, double h2) {
-        h[0] = h0; h[1] = h1; c[2] = h2;
+        h[0] = h0; h[1] = h1; h[2] = h2;
     }
 
     public void setV(double v0, double v1, double v2) {

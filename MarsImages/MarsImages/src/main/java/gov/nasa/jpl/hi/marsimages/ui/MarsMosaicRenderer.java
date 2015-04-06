@@ -4,7 +4,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.opengl.GLSurfaceView;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.opengl.GLES20;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -13,41 +15,41 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import com.evernote.edam.type.Note;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.assist.FailReason;
+import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
+import com.powellware.marsimages.R;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
-import static android.opengl.GLES20.glClear;
-import static android.opengl.GLES20.glClearColor;
-import static android.opengl.GLES20.glViewport;
-import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
-
-import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
-import gov.nasa.jpl.hi.marsimages.JsonReader;
-import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.models.CameraModel;
+import gov.nasa.jpl.hi.marsimages.models.ImageQuad;
 import gov.nasa.jpl.hi.marsimages.models.M;
+import gov.nasa.jpl.hi.marsimages.models.Model;
+import gov.nasa.jpl.hi.marsimages.models.Quad;
 import gov.nasa.jpl.hi.marsimages.rovers.Rover;
-import rajawali.lights.ALight;
-import rajawali.lights.DirectionalLight;
 import rajawali.lights.PointLight;
 import rajawali.materials.DiffuseMaterial;
-import rajawali.math.Number3D;
+import rajawali.materials.SimpleMaterial;
+import rajawali.materials.TextureInfo;
+import rajawali.materials.TextureManager;
 import rajawali.primitives.Plane;
-import rajawali.primitives.Sphere;
 import rajawali.renderer.RajawaliRenderer;
+
+import static android.opengl.GLES20.GL_LINE_LOOP;
+import static android.opengl.GLES20.GL_TRIANGLE_FAN;
+import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 
 /**
  * Created by mpowell on 3/21/15.
@@ -56,22 +58,42 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
 
     public static final float MIN_ZOOM = 0.5f;
     public static final float MAX_ZOOM = 5.0f;
+    private static final double Y_ROTATION_UPPER_LIMIT = Math.PI / 2;
+    private static final double Y_ROTATION_LOWER_LIMIT = -Math.PI / 2;
+    private final float TOUCH_SCALE_FACTOR = .0015f;
+    private final float COMPASS_HEIGHT = 0.5f;
+    private final double[] x_axis = {1f, 0f, 0f};
+    private final double[] y_axis = {0f, 1f, 0f};
+
     private PointLight mLight;
-//    private Sphere mSphere;
-    private Plane mPlane;
     private int[] rmc;
-    private Map<String, Note> photosInScene;
-    private final float TOUCH_SCALE_FACTOR = .05f;
+    private double[] qLL;
+    private Map<String, Note> photosInScene = new ConcurrentHashMap<>();
+    private Map<String, Boolean> imagesLoading = new ConcurrentHashMap<>();
     private float mPreviousX = 0f;
     private float mPreviousY = 0f;
     private float cameraRelativeXMotion = 0f;
     private float cameraRelativeYMotion = 0f;
     private final ScaleGestureDetector mScaleDetector;
     private float mScaleFactor = 1f;
-
+    private DiffuseMaterial yellowMaterial;
+    private DiffuseMaterial whiteMaterial;
+    private Quad mCompass;
+    private Map<String, ImageQuad> photoQuads = new ConcurrentHashMap<>();
+    private Map<String, TextureInfo> photoTextures = new ConcurrentHashMap<>();
+    private double[] forwardVector = {0, 0, -1};
+    private double rotAz[] = new double[4], rotEl[] = new double[4];
+    private double look1[] = new double[3], look2[] = new double[3];
+    private double rotationX = 0;
+    private double rotationY = 0;
 
     public MarsMosaicRenderer(Context context) {
         super(context);
+
+        //framework places camera at Z=4 by default. Fix that.
+        mEyeZ = 0f;
+        mCamera.setZ(mEyeZ);
+
         setFrameRate(60);
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         LocalBroadcastManager.getInstance(context).registerReceiver(mMessageReceiver, filter);
@@ -79,7 +101,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
                 float scaleFactor = detector.getScaleFactor();
-                Log.d(TAG, "scale factor: "+scaleFactor);
+//                Log.d(TAG, "scale factor: "+scaleFactor);
                 mScaleFactor *= scaleFactor;
                 // Don't let the object get too small or too large.
                 mScaleFactor = Math.max(MIN_ZOOM, Math.min(mScaleFactor, MAX_ZOOM));
@@ -89,37 +111,148 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
     }
 
     protected void initScene() {
+
+        int[] maxTextureSize = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
+        Log.d(TAG, "Max texture size: "+maxTextureSize[0]);
+
         mLight = new PointLight();
         mLight.setColor(1.0f, 1.0f, 1.0f);
-        mLight.setPower(2);
+        mLight.setPower(1);
 
-        //    Bitmap bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.earthtruecolor_nasa_big);
-        DiffuseMaterial material = new DiffuseMaterial();
-//        mSphere = new Sphere(1, 18, 18);
-//        mSphere.setMaterial(material);
-//        mSphere.addLight(mLight);
-        //    mSphere.addTexture(mTextureManager.addTexture(bg));
-//        addChild(mSphere);
-        mPlane = new Plane(2, 2, 1, 1);
-        mPlane.setMaterial(material);
-        mPlane.addLight(mLight);
-        addChild(mPlane);
+        yellowMaterial = new DiffuseMaterial();
+        yellowMaterial.setAmbientColor(1f, 1f, 0f, 1f);
 
-        mCamera.setZ(4.2f);
+        whiteMaterial = new DiffuseMaterial();
+        whiteMaterial.setAmbientColor(1f, 1f, 1f, 1f);
+
+        addHoverCompass();
+
         int[] rmc = EVERNOTE.getNearestRMC();
         addImagesToScene(rmc);
     }
 
+    private void addHoverCompass() {
+        Bitmap bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_2k);
+        Plane plane = new Plane(10, 10, 2, 2);
+        plane.setPosition(0f,COMPASS_HEIGHT,0f);
+        plane.setRotX(-90);
+        plane.setMaterial(new SimpleMaterial());
+        plane.addTexture(mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, true));
+        bg.recycle();
+        plane.addLight(mLight);
+        plane.setTransparent(true);
+        addChild(plane);
+    }
+
+    @Override
     public void onDrawFrame(GL10 glUnused) {
-        super.onDrawFrame(glUnused);
-        mCamera.setRotX(mCamera.getRotX() - cameraRelativeYMotion * TOUCH_SCALE_FACTOR);
-        mCamera.setRotY(mCamera.getRotY() - cameraRelativeXMotion * TOUCH_SCALE_FACTOR);
+
+        //set camera rotation and field of view based on gesture input
+        rotationX += cameraRelativeXMotion * TOUCH_SCALE_FACTOR;
+        rotationY += cameraRelativeYMotion * TOUCH_SCALE_FACTOR;
         cameraRelativeXMotion = cameraRelativeYMotion = 0f;
 
+        rotationY = Math.max(rotationY, Y_ROTATION_LOWER_LIMIT);
+        rotationY = Math.min(rotationY, Y_ROTATION_UPPER_LIMIT);
+
+        M.quatva(y_axis, rotationX, rotAz);
+        M.quatva(x_axis, rotationY, rotEl);
+        M.multqv(rotEl, forwardVector, look1);
+        M.multqv(rotAz, look1, look2);
+        mCamera.setLookAt((float)look2[0], (float)look2[1], (float)look2[2]);
         mCamera.setFieldOfView(45/mScaleFactor);
+        mCamera.setFarPlane(12.0f);
+        mCamera.setNearPlane(0.1f);
         mCamera.setProjectionMatrix(mSurfaceView.getWidth(), mSurfaceView.getHeight());
 
-//        mPlane.setRotY(mPlane.getRotY() + 1);
+        //update imagequads to use image texture or line mode depending on visibility and if the image is loaded yet into memory
+        prepareImageQuads();
+
+        super.onDrawFrame(glUnused);
+    }
+
+    private void prepareImageQuads() {
+
+        int skippedImages = 0;
+
+        for (String title: photoQuads.keySet()) {
+            ImageQuad imageQuad = photoQuads.get(title);
+//            //frustum culling: don't draw if the bounding sphere of the image quad isn't in the camera frustum
+//            AGLKFrustum frustum = ((MosaicViewController*)_viewController).frustum;
+//            if (AGLKFrustumCompareSphere(&frustum, imageQuad.center, imageQuad.boundingSphereRadius) == AGLKFrustumOut) {
+//                skippedImages++;
+//                [self deleteImageAndTexture: title];
+//                continue;
+//            }
+            prepareImageQuad(imageQuad, title);
+        }
+    }
+
+    private void prepareImageQuad(ImageQuad imageQuad, String title) {
+        TextureInfo textureInfo = photoTextures.get(title);
+        if (textureInfo != null) {
+            if (!imageQuad.getTextureInfoList().contains(textureInfo)) {
+                imageQuad.setDrawingMode(GL_TRIANGLE_FAN);
+                imageQuad.setMaterial(whiteMaterial);
+                imageQuad.addTexture(textureInfo);
+            }
+        }
+        else {
+            loadImageAndTexture(title);
+        }
+    }
+
+    private void loadImageAndTexture(final String title) {
+        Note photo = photosInScene.get(title);
+        if (photo == null) {
+            Log.w(TAG, "No photo in scene with title "+title);
+            return;
+        }
+
+        //TODO get the image size right
+        Boolean isLoading = imagesLoading.get(title);
+        if (isLoading == null || isLoading == false) {
+            ImageLoader.getInstance().loadImage(EVERNOTE.getUri(photo.getResources().get(0)), new ImageLoadingListener() {
+                @Override
+                public void onLoadingStarted(String imageUri, View view) {
+                    Log.d(TAG, "Loading texture for "+imageUri);
+                    imagesLoading.put(title, true);
+                }
+
+                @Override
+                public void onLoadingFailed(String imageUri, View view, FailReason failReason) {
+                    Log.e(TAG, "Failed to load image "+imageUri+ " because "+failReason);
+                }
+
+                @Override
+                public void onLoadingComplete(String imageUri, View view, final Bitmap loadedImage) {
+                    Log.d(TAG, "Loaded image "+imageUri);
+                    mSurfaceView.queueEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            TextureInfo textureInfo = mTextureManager.addTexture(loadedImage, TextureManager.TextureType.DIFFUSE, false, false);
+                            photoTextures.put(title, textureInfo);
+                            imagesLoading.put(title, false);
+                        }
+                    });
+                }
+
+                @Override
+                public void onLoadingCancelled(String imageUri, View view) {
+                    Log.e(TAG, "Cancelled image "+imageUri);
+                }
+            });
+        }
+//        UIImage* image = [photo underlyingImage];
+//        if (!image) {
+//            if (!photo.isLoading) {
+//                [photo performLoadUnderlyingImageAndNotify];
+//            }
+//        } else {
+//            [self makeTexture:image withTitle:title grayscale:[photo isGrayscale]];
+//            [photo unloadUnderlyingImage]; //improves memory management quite significantly
+//        }
     }
 
     public void addImagesToScene(int[] rmc) {
@@ -127,12 +260,13 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         Rover mission = MARS_IMAGES.getMission();
         int site_index = rmc[0];
         int drive_index = rmc[1];
-        double[] qLL = mission.localLevelQuaternion(site_index, drive_index);
+        qLL = mission.localLevelQuaternion(site_index, drive_index);
         EVERNOTE.setSearchWords(String.format("RMC %06d-%06d", site_index, drive_index), mContext);
         EVERNOTE.reloadNotes(mContext); //rely on the resultant note load end broadcast receiver to populate images in the scene
     }
 
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+
         @Override
         public void onReceive(Context context, Intent intent) {
             final Rover rover = MARS_IMAGES.getMission();
@@ -146,11 +280,16 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                 if (notesReturned > 0) {
                     EVERNOTE.loadMoreNotes(mContext, false);
                 } else {
-                    new AsyncTask<Void, Void, Void>() {
+                    AsyncTask<Void, Void, List<QuadInitializer>> execute = new AsyncTask<Void, Void, List<QuadInitializer>>() {
                         @Override
-                        protected Void doInBackground(Void... voids) {
+                        protected List<QuadInitializer> doInBackground(Void... voids) {
+
+                            if (!photoQuads.isEmpty())
+                                return Collections.EMPTY_LIST; //we've already made the image quads
+
+                            List<QuadInitializer> quadInitializers = new ArrayList<QuadInitializer>();
+                            Log.d(TAG, "Making image quads");
                             List<Note> notes = EVERNOTE.getNotes();
-                            photosInScene = new LinkedHashMap<String, Note>();
                             binImagesByPointing(notes);
                             int mosaicCount = 0;
                             for (String photoTitle : photosInScene.keySet()) {
@@ -161,25 +300,35 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                                     continue;
 
                                 mosaicCount++;
-//                                id<Model> model = [CameraModel model:model_json];
-//                                NSString* imageId = [[MarsImageNotebook instance].mission imageId:photo.resource];
-//                                ImageQuad* imageQuad = [[ImageQuad alloc] initWithModel:model qLL:qLL imageID:imageId];
+                                Model model = CameraModel.getModel(model_json);
+                                String imageId = MARS_IMAGES.getMission().getImageID(photo.getResources().get(0));
+                                quadInitializers.add(new QuadInitializer(model, imageId, photoTitle));
                             }
-                            return null;
+                            return quadInitializers;
                         }
-                    }.execute();                    //when there are no more notes returned, we have all images for this location: add them to the scene
-//                    dispatch_async(downloadQueue, ^{
 
-//                        dispatch_async(dispatch_get_main_queue(), ^{
-//                                _photoQuads[photo.note.title] = imageQuad;
-//                        });
+                        @Override
+                        protected void onPostExecute(final List<QuadInitializer> initializers) {
+                            mSurfaceView.queueEvent(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Log.d(TAG, "Adding image quads to scene");
+                                    for (QuadInitializer i : initializers) {
+                                        ImageQuad quad = new ImageQuad(i.model, qLL, i.imageId);
+                                        if (!hasChild(quad)) {
+                                            quad.setDrawingMode(GL_LINE_LOOP);
+                                            quad.setMaterial(yellowMaterial);
+                                            quad.addLight(mLight);
+                                            addChild(quad);
+                                            photoQuads.put(i.photoTitle, quad);
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }.execute();//when there are no more notes returned, we have all images for this location: add them to the scene
                 }
-//                    dispatch_async(dispatch_get_main_queue(), ^{
-//                            [((MosaicViewController*)_viewController) hideHud];
-//                    });
-//                    });
             }
-
         }
 
         private void binImagesByPointing(List<Note> imagesForRMC) {
@@ -218,7 +367,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
 
         float x = e.getX();
         float y = e.getY();
-        Log.d(TAG, "Motion event: "+x+", "+y);
+//        Log.d(TAG, "Motion event: "+x+", "+y);
         switch (e.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
                 mPreviousX = e.getX();
@@ -239,5 +388,17 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                 break;
         }
         return true;
+    }
+
+    private static class QuadInitializer {
+        public String imageId;
+        public Model model;
+        public String photoTitle;
+
+        public QuadInitializer(Model model, String imageId, String photoTitle) {
+            this.model = model;
+            this.imageId = imageId;
+            this.photoTitle = photoTitle;
+        }
     }
 }

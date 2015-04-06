@@ -174,9 +174,13 @@ public class EvernoteMars {
         String imageUrl = null;
         if (position >= 0 && position < notesArray.size()) {
             Note note = notesArray.get(position);
-            imageUrl = EVERNOTE.getUriPrefix() + "res/" + note.getResources().get(0).getGuid();
+            imageUrl = getUri(note.getResources().get(0));
         }
         return imageUrl;
+    }
+
+    public String getUri(Resource resource) {
+        return EVERNOTE.getUriPrefix() + "res/" + resource.getGuid();
     }
 
     String getUriPrefix() {

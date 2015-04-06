@@ -78,7 +78,7 @@ public class Curiosity extends Rover {
     }
 
     @Override
-    protected double getCameraFOV(String cameraId) {
+    public double getCameraFOV(String cameraId) {
         if (cameraId.charAt(0) == 'N')
             return 0.785398163;
         else if (cameraId.equals("ML"))
@@ -90,12 +90,31 @@ public class Curiosity extends Rover {
     }
 
     @Override
-    protected String getCameraId(String imageId) {
+    public String getCameraId(String imageId) {
         char c = imageId.charAt(0);
         if (c >= '0' && c <= '9') {
             return imageId.substring(4,6);
         }
         return imageId.substring(0, 2);
+    }
+
+    public int getLayer(String cameraId, String imageId) {
+        if (cameraId.charAt(0) == 'N') {
+            return 2;
+        }
+        return 1;
+    }
+
+    public float getMastX() {
+        return 0.80436f;
+    }
+
+    public float getMastY() {
+        return 0.55942f;
+    }
+
+    public float getMastZ() {
+        return -1.90608f;
     }
 
     @Override
