@@ -17,7 +17,9 @@ import android.view.View;
 import com.evernote.edam.type.Note;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.assist.FailReason;
+import com.nostra13.universalimageloader.core.assist.ImageSize;
 import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
+import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
 
 import org.json.JSONArray;
@@ -38,7 +40,9 @@ import gov.nasa.jpl.hi.marsimages.models.Model;
 import gov.nasa.jpl.hi.marsimages.models.Quad;
 import gov.nasa.jpl.hi.marsimages.rovers.Rover;
 import rajawali.lights.PointLight;
+import rajawali.materials.AMaterial;
 import rajawali.materials.DiffuseMaterial;
+import rajawali.materials.SimpleAlphaMaterial;
 import rajawali.materials.SimpleMaterial;
 import rajawali.materials.TextureInfo;
 import rajawali.materials.TextureManager;
@@ -77,7 +81,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
     private final ScaleGestureDetector mScaleDetector;
     private float mScaleFactor = 1f;
     private DiffuseMaterial yellowMaterial;
-    private DiffuseMaterial whiteMaterial;
     private Quad mCompass;
     private Map<String, ImageQuad> photoQuads = new ConcurrentHashMap<>();
     private Map<String, TextureInfo> photoTextures = new ConcurrentHashMap<>();
@@ -111,20 +114,11 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
     }
 
     protected void initScene() {
-
-        int[] maxTextureSize = new int[1];
-        GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
-        Log.d(TAG, "Max texture size: "+maxTextureSize[0]);
-
         mLight = new PointLight();
         mLight.setColor(1.0f, 1.0f, 1.0f);
-        mLight.setPower(1);
 
         yellowMaterial = new DiffuseMaterial();
         yellowMaterial.setAmbientColor(1f, 1f, 0f, 1f);
-
-        whiteMaterial = new DiffuseMaterial();
-        whiteMaterial.setAmbientColor(1f, 1f, 1f, 1f);
 
         addHoverCompass();
 
@@ -133,15 +127,21 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
     }
 
     private void addHoverCompass() {
-        Bitmap bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_2k);
+        int[] maxTextureSize = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
+        Bitmap bg = null;
+        if (maxTextureSize[0] >= 2048)
+            bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_2k);
+        else
+            bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_1k);
+
         Plane plane = new Plane(10, 10, 2, 2);
         plane.setPosition(0f,COMPASS_HEIGHT,0f);
         plane.setRotX(-90);
-        plane.setMaterial(new SimpleMaterial());
+        plane.setMaterial(new SimpleMaterial(AMaterial.ALPHA_MASKING));
         plane.addTexture(mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, true));
         bg.recycle();
         plane.addLight(mLight);
-        plane.setTransparent(true);
         addChild(plane);
     }
 
@@ -185,7 +185,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
 //                [self deleteImageAndTexture: title];
 //                continue;
 //            }
-            prepareImageQuad(imageQuad, title);
+            if (imageQuad.getTextureInfoList().size() == 0)
+                prepareImageQuad(imageQuad, title);
         }
     }
 
@@ -194,17 +195,19 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         if (textureInfo != null) {
             if (!imageQuad.getTextureInfoList().contains(textureInfo)) {
                 imageQuad.setDrawingMode(GL_TRIANGLE_FAN);
-                imageQuad.setMaterial(whiteMaterial);
+                imageQuad.setMaterial(new SimpleMaterial());
                 imageQuad.addTexture(textureInfo);
             }
         }
         else {
-            loadImageAndTexture(title);
+            synchronized (this){
+                loadImageAndTexture(title);
+            }
         }
     }
 
     private void loadImageAndTexture(final String title) {
-        Note photo = photosInScene.get(title);
+        final Note photo = photosInScene.get(title);
         if (photo == null) {
             Log.w(TAG, "No photo in scene with title "+title);
             return;
@@ -213,34 +216,24 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         //TODO get the image size right
         Boolean isLoading = imagesLoading.get(title);
         if (isLoading == null || isLoading == false) {
-            ImageLoader.getInstance().loadImage(EVERNOTE.getUri(photo.getResources().get(0)), new ImageLoadingListener() {
-                @Override
-                public void onLoadingStarted(String imageUri, View view) {
-                    Log.d(TAG, "Loading texture for "+imageUri);
-                    imagesLoading.put(title, true);
-                }
-
-                @Override
-                public void onLoadingFailed(String imageUri, View view, FailReason failReason) {
-                    Log.e(TAG, "Failed to load image "+imageUri+ " because "+failReason);
-                }
-
+            imagesLoading.put(title, true);
+            ImageLoader.getInstance().resume(); //in case the image loader engine is currently paused
+            final String uri = EVERNOTE.getUri(photo.getResources().get(0));
+            ImageLoader.getInstance().loadImage(uri, new ImageSize(512, 512), new SimpleImageLoadingListener() {
                 @Override
                 public void onLoadingComplete(String imageUri, View view, final Bitmap loadedImage) {
-                    Log.d(TAG, "Loaded image "+imageUri);
+                    int width = loadedImage.getWidth();
+                    int height = loadedImage.getHeight();
+                    Log.d(TAG, "Loaded image size: "+ width +"x"+ height +" for image " + uri);
+                    final Bitmap texture = (width != 512 || height != 512) ? Bitmap.createScaledBitmap(loadedImage, 512, 512, true) : loadedImage;
                     mSurfaceView.queueEvent(new Runnable() {
                         @Override
                         public void run() {
-                            TextureInfo textureInfo = mTextureManager.addTexture(loadedImage, TextureManager.TextureType.DIFFUSE, false, false);
+                            TextureInfo textureInfo = mTextureManager.addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
                             photoTextures.put(title, textureInfo);
                             imagesLoading.put(title, false);
                         }
                     });
-                }
-
-                @Override
-                public void onLoadingCancelled(String imageUri, View view) {
-                    Log.e(TAG, "Cancelled image "+imageUri);
                 }
             });
         }
@@ -280,7 +273,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                 if (notesReturned > 0) {
                     EVERNOTE.loadMoreNotes(mContext, false);
                 } else {
-                    AsyncTask<Void, Void, List<QuadInitializer>> execute = new AsyncTask<Void, Void, List<QuadInitializer>>() {
+                    new AsyncTask<Void, Void, List<QuadInitializer>>() {
                         @Override
                         protected List<QuadInitializer> doInBackground(Void... voids) {
 

@@ -62,7 +62,7 @@ public class Quad extends BaseObject3D {
         for (int i = 0; i < NUM_VERTICES; i++) {
             normals[i*3] = 0;
             normals[i*3 + 1] = 0;
-            normals[i*3 + 2] = 1;
+            normals[i*3 + 2] = 0;
         }
 
         int ul = 0;

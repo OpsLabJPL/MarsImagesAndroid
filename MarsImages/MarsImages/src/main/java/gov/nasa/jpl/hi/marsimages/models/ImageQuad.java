@@ -34,7 +34,7 @@ public class ImageQuad extends Quad {
 
         float[][] vertices = new float[4][];
         for (int i = 0; i < 4; i++) { vertices[i] = new float[3]; }
-        getImageVertices(model, qLL, vertices, 5+layer);
+        getImageVertices(model, qLL, vertices, layer);
         System.arraycopy(vertices[0],0,v0,0,3);
         System.arraycopy(vertices[1],0,v1,0,3);
         System.arraycopy(vertices[2],0,v2,0,3);
