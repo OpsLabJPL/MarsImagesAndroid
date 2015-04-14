@@ -78,6 +78,7 @@
         <activity
             android:name="gov.nasa.jpl.hi.marsimages.ui.MosaicActivity"
             android:label="@string/title_activity_mosaic"
+            android:hardwareAccelerated="false"
             android:parentActivityName="gov.nasa.jpl.hi.marsimages.ui.ImageViewActivity" >
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
