@@ -87,7 +87,7 @@ public class MapActivity extends Activity {
                 mapView.setCenter(new LatLng(centerLat, centerLon));
                 mapView.setMinZoomLevel(minZoom);
                 mapView.setMaxZoomLevel(maxZoom);
-                mapView.setZoom(maxZoom-2);
+                mapView.setZoom(maxNativeZoom);  //use maxNativeZoom < n <= maxZoom when it is supported
                 frameLayout.addView(mapView);
 
                 new AsyncTask<Void, Void, Void>() {
