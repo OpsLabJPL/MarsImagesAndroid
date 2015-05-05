@@ -143,9 +143,9 @@ public class ImageViewFragment extends Fragment
     private void setupCaptionAndImageSelectionMenu(final Note note) {
         if (getActivity() == null) return;
 
-        final boolean fullscreen = ((ImageViewActivity) getActivity()).isFullscreen();
-        mCaptionView.setAlpha(fullscreen ? 0 : 1);
-        mSelectButton.setAlpha(fullscreen ? 0 : 1);
+//        final boolean fullscreen = ((ImageViewActivity) getActivity()).isFullscreen();
+//        mCaptionView.setAlpha(fullscreen ? 0 : 1);
+//        mSelectButton.setAlpha(fullscreen ? 0 : 1);
 
         String caption = MARS_IMAGES.getMission().getCaptionText(note);
         mCaptionView.setText(caption);
@@ -334,7 +334,7 @@ public class ImageViewFragment extends Fragment
             return;
 
         ImageViewActivity activity = (ImageViewActivity)getActivity();
-        activity.setFullscreen(!activity.isFullscreen());
+//        activity.setFullscreen(!activity.isFullscreen());
     }
 
     public void showCaption(boolean visible) {

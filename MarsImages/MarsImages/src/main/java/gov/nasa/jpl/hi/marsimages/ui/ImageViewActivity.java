@@ -71,10 +71,9 @@ public class ImageViewActivity extends ActionBarActivity
     private boolean needToSetViewPagerToPageZero = false;
     private SearchView searchView;
     private MenuItem mSearchItem;
-    private DrawerLayout mDrawer;
-    private ActionBarDrawerToggle mDrawerToggle;
-    private boolean fullscreen;
-    private final WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
+//    private DrawerLayout mDrawer;
+//    private ActionBarDrawerToggle mDrawerToggle;
+//    private boolean fullscreen;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -88,8 +87,8 @@ public class ImageViewActivity extends ActionBarActivity
         filter.addAction(MarsImagesApp.NOTES_CLEARED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
-        mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        mDrawer.setScrimColor(Color.TRANSPARENT);
+//        mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+//        mDrawer.setScrimColor(Color.TRANSPARENT);
 
         // Set up ViewPager and backing adapter
         mAdapter = new ImagePagerAdapter(getSupportFragmentManager());
@@ -110,40 +109,43 @@ public class ImageViewActivity extends ActionBarActivity
 
                 //try to load more notes when the last image view page is selected
                 int pageCount = mAdapter.getCount();
-                if (position >= pageCount - mPager.getOffscreenPageLimit() - 1)
-                    loadMoreImages();
+                //FIXME make this talk to the right activity
+//                if (position >= pageCount - mPager.getOffscreenPageLimit() - 1)
+//                    loadMoreImages();
             }
         });
 
-        ImageListFragment mListFragment = new ImageListFragment();
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.image_list_frame, mListFragment)
-                .commit();
+//        ImageListFragment mListFragment = new ImageListFragment();
+//        getSupportFragmentManager().beginTransaction()
+//                .replace(R.id.image_list_frame, mListFragment)
+//                .commit();
 
 
 
-        mDrawerToggle = new ActionBarDrawerToggle(
-                this,
-                mDrawer,
-                R.string.drawer_open,
-                R.string.drawer_close
-        ) { /* default implementation */ };
+//        mDrawerToggle = new ActionBarDrawerToggle(
+//                this,
+//                mDrawer,
+//                R.string.drawer_open,
+//                R.string.drawer_close
+//        ) { /* default implementation */ };
+//
+//        mDrawer.setDrawerListener(mDrawerToggle);
 
-        mDrawer.setDrawerListener(mDrawerToggle);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setHomeButtonEnabled(true);
-        int v =  View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-        getWindow().getDecorView().setSystemUiVisibility(v);
-        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
-            @Override
-            public void onSystemUiVisibilityChange(int visibility) {
-                boolean fullscreenVisibility = (visibility & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) != 0;
-                if (fullscreenVisibility != isFullscreen())
-                    setFullscreen(fullscreenVisibility);
-            }
-        });
+//        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+//        getSupportActionBar().setHomeButtonEnabled(true);
+//        int v =  View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+//            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+//            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+//        getWindow().getDecorView().setSystemUiVisibility(v);
+//        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+//            @Override
+//            public void onSystemUiVisibilityChange(int visibility) {
+//                boolean fullscreenVisibility = (visibility & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) != 0;
+//                if (fullscreenVisibility != isFullscreen())
+//                    setFullscreen(fullscreenVisibility);
+//            }
+//        });
+
         ArrayAdapter<CharSequence> mSpinnerAdapter = ArrayAdapter.createFromResource(this,
                 R.array.missions, android.R.layout.simple_spinner_dropdown_item);
         String[] missions = getResources().getStringArray(R.array.missions);
@@ -161,55 +163,35 @@ public class ImageViewActivity extends ActionBarActivity
                 mAdapter.notifyDataSetChanged();
                 mPager.setCurrentItem(selectedPage);
             }
-            if (savedInstanceState.getBoolean(STATE_DRAWER_OPEN, true))
-                mDrawer.openDrawer(GravityCompat.START);
-            else
-                mDrawer.closeDrawer(GravityCompat.START);
+//            if (savedInstanceState.getBoolean(STATE_DRAWER_OPEN, true))
+//                mDrawer.openDrawer(GravityCompat.START);
+//            else
+//                mDrawer.closeDrawer(GravityCompat.START);
 
-            if (savedInstanceState.getBoolean(STATE_FULLSCREEN, false))
-                setFullscreen(true);
+//            if (savedInstanceState.getBoolean(STATE_FULLSCREEN, false))
+//                setFullscreen(true);
         }
-
-        loadMoreImages();
-    }
-
-    void loadMoreImages() {
-        loadMoreImages(false);
-    }
-
-    private void loadMoreImages(boolean clearFirst) {
-        ConnectivityManager cm = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-        if (!isConnected) {
-            IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
-            intentFilter.setPriority(100);
-            LocalBroadcastManager.getInstance(this).registerReceiver(mWifiStateReceiver, intentFilter);
-            Toast.makeText(this, "Unable to connect to the network.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        EVERNOTE.loadMoreNotes(this, clearFirst);
     }
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         // Sync the toggle state after onRestoreInstanceState has occurred.
-        mDrawerToggle.syncState();
+//        mDrawerToggle.syncState();
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        mDrawerToggle.onConfigurationChanged(newConfig);
+//        mDrawerToggle.onConfigurationChanged(newConfig);
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(STATE_PAGE_NUMBER, mPager.getCurrentItem());
-        outState.putBoolean(STATE_DRAWER_OPEN, mDrawer.isDrawerOpen(GravityCompat.START));
-        outState.putBoolean(STATE_FULLSCREEN, isFullscreen());
+//        outState.putBoolean(STATE_DRAWER_OPEN, mDrawer.isDrawerOpen(GravityCompat.START));
+//        outState.putBoolean(STATE_FULLSCREEN, isFullscreen());
     }
 
     @Override
@@ -264,8 +246,9 @@ public class ImageViewActivity extends ActionBarActivity
         super.onResume();
         long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
         ImageLoader.getInstance().resume();
-        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
-            loadMoreImages(true);
+        //FIXME make this talk to the right activity
+//        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
+//            loadMoreImages(true);
     }
 
     @Override
@@ -278,7 +261,6 @@ public class ImageViewActivity extends ActionBarActivity
     @Override
     protected void onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mWifiStateReceiver);
         super.onDestroy();
     }
 
@@ -335,9 +317,9 @@ public class ImageViewActivity extends ActionBarActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (mDrawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
+//        if (mDrawerToggle.onOptionsItemSelected(item)) {
+//            return true;
+//        }
 
         switch (item.getItemId()) {
             case R.id.about:
@@ -483,30 +465,30 @@ public class ImageViewActivity extends ActionBarActivity
         return Integer.parseInt(tag.substring(9));
     }
 
-    public boolean isFullscreen() {
-        return fullscreen;
-    }
+//    public boolean isFullscreen() {
+//        return fullscreen;
+//    }
 
-    public void setFullscreen(boolean fullscreen) {
-        this.fullscreen = fullscreen;
-        List<Fragment> fragments = getSupportFragmentManager().getFragments();
-        int v = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-        if (fullscreen) {
-            v |= View.SYSTEM_UI_FLAG_FULLSCREEN;
-            v |= View.SYSTEM_UI_FLAG_IMMERSIVE;
-            v |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-        }
-        getWindow().getDecorView().setSystemUiVisibility(v);
-
-        for (Fragment fragment : fragments) {
-            if (fragment instanceof ImageViewFragment) {
-                ImageViewFragment imageview = (ImageViewFragment)fragment;
-                imageview.showCaption(!isFullscreen());
-            }
-        }
-    }
+//    public void setFullscreen(boolean fullscreen) {
+//        this.fullscreen = fullscreen;
+//        List<Fragment> fragments = getSupportFragmentManager().getFragments();
+//        int v = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+//            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+//            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+//        if (fullscreen) {
+//            v |= View.SYSTEM_UI_FLAG_FULLSCREEN;
+//            v |= View.SYSTEM_UI_FLAG_IMMERSIVE;
+//            v |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+//        }
+//        getWindow().getDecorView().setSystemUiVisibility(v);
+//
+//        for (Fragment fragment : fragments) {
+//            if (fragment instanceof ImageViewFragment) {
+//                ImageViewFragment imageview = (ImageViewFragment)fragment;
+//                imageview.showCaption(!isFullscreen());
+//            }
+//        }
+//    }
 
     public static class ImagePagerAdapter extends FragmentStatePagerAdapter {
 
@@ -533,19 +515,4 @@ public class ImageViewActivity extends ActionBarActivity
         }
     }
 
-    public static class WifiStateReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            ConnectivityManager cm =
-                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-            boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-            if (isConnected) {
-                Log.d("wifi state connected", "Wifi reconnected.");
-                LocalBroadcastManager.getInstance(context).unregisterReceiver(this);
-                EVERNOTE.hasNotesRemaining = true;
-                EVERNOTE.loadMoreNotes(context, false);
-            }
-        }
-    }
 }
