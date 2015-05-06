@@ -48,7 +48,6 @@
             android:theme="@style/AppTheme" >
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
-
                 <action android:name="gov.nasa.jpl.hi.marsimages.MAP" />
             </intent-filter>
 
