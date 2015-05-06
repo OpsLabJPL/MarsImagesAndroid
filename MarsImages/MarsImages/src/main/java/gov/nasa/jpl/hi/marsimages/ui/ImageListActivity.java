@@ -4,22 +4,36 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
+import com.google.common.collect.Lists;
+import com.nostra13.universalimageloader.core.ImageLoader;
 import com.powellware.marsimages.R;
 
-import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
+import java.util.List;
 
-public class ImageListActivity extends ActionBarActivity {
-//    implements ItemListFragment.Callbacks {
+import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
+
+import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES_PREFERENCES_KEY;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
+
+public class ImageListActivity extends ActionBarActivity implements ImageListFragment.Callbacks,
+        ActionBar.OnNavigationListener {
 
     /**
      * Whether or not the activity is in two-pane mode, i.e. running on a tablet
@@ -33,21 +47,24 @@ public class ImageListActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_list);
-        if (findViewById(R.id.image_view_container) != null) {
+
+        if (findViewById(R.id.fragment_image_view_pager) != null) {
             // The detail container view will be present only in the
             // large-screen layouts (res/values-large and
             // res/values-sw600dp). If this view is present, then the
             // activity should be in two-pane mode.
             mTwoPane = true;
-
-            // In two-pane mode, list items should be given the
-            // 'activated' state when touched.
-//            ((ImageListFragment) getSupportFragmentManager()
-//                    .findFragmentById(R.id.image_list_view))
-//                    .setActivateOnItemClick(true);
         }
 
-        // TODO: If exposing deep links into your app, handle intents here.
+        ArrayAdapter<CharSequence> mSpinnerAdapter = ArrayAdapter.createFromResource(this,
+                R.array.missions, android.R.layout.simple_spinner_dropdown_item);
+        String[] missions = getResources().getStringArray(R.array.missions);
+        List<String> missionList = Lists.newArrayList(missions);
+        CharSequence missionName = MARS_IMAGES.getMissionName();
+        int missionIndex = missionList.indexOf(missionName);
+        getSupportActionBar().setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+        getSupportActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
+        getSupportActionBar().setSelectedNavigationItem(missionIndex);
 
         loadMoreImages();
     }
@@ -56,6 +73,23 @@ public class ImageListActivity extends ActionBarActivity {
     protected void onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mWifiStateReceiver);
         super.onDestroy();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ImageLoader.getInstance().pause();
+        MARS_IMAGES.setPauseTimestamp(System.currentTimeMillis());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
+        ImageLoader.getInstance().resume();
+        //FIXME make this talk to the right activity
+//        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
+//            loadMoreImages(true);
     }
 
     void loadMoreImages() {
@@ -77,52 +111,83 @@ public class ImageListActivity extends ActionBarActivity {
     }
 
     /**
-     * Callback method from {@link ItemListFragment.Callbacks}
+     * Callback method from {@link ImageListFragment.Callbacks}
      * indicating that the item with the given ID was selected.
      */
-//    @Override
-//    public void onItemSelected(String id) {
-//        if (mTwoPane) {
-//            // In two-pane mode, show the detail view in this activity by
-//            // adding or replacing the detail fragment using a
-//            // fragment transaction.
-//            Bundle arguments = new Bundle();
-//            arguments.putString(ItemDetailFragment.ARG_ITEM_ID, id);
-//            ItemDetailFragment fragment = new ItemDetailFragment();
-//            fragment.setArguments(arguments);
-//            getSupportFragmentManager().beginTransaction()
-//                    .replace(R.id.item_detail_container, fragment)
-//                    .commit();
-//
-//        } else {
-//            // In single-pane mode, simply start the detail activity
-//            // for the selected item ID.
-//            Intent detailIntent = new Intent(this, ItemDetailActivity.class);
-//            detailIntent.putExtra(ItemDetailFragment.ARG_ITEM_ID, id);
-//            startActivity(detailIntent);
-//        }
-//    }
-//
+    @Override
+    public void onItemSelected(int imageIndex) {
+
+
+        if (mTwoPane) {
+            // In two-pane mode, show the detail view in this activity by
+            // adding or replacing the detail fragment using a
+            // fragment transaction.
+            Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
+            intent.putExtra(MarsImagesApp.IMAGE_INDEX, imageIndex);
+            intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.LIST_SOURCE);
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        } else {
+            // In single-pane mode, simply start the Image View Activity
+            // for the selected item ID.
+            Intent imageViewIntent = new Intent(this, ImageViewActivity.class);
+            imageViewIntent.putExtra(ImageViewPagerFragment.STATE_PAGE_NUMBER, imageIndex);
+            startActivity(imageViewIntent);
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_image_list, menu);
+        if (mTwoPane)
+            getMenuInflater().inflate(R.menu.image_view, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (id) {
+            case R.id.about:
+                createAboutThisAppActivity();
+                return true;
+            case R.id.clock:
+                createMarsTimeActivity();
+                return true;
+            case R.id.map:
+                createMapActivity();
+                return true;
+            case R.id.mosaic:
+                createMosaicActivity();
+                return true;
+            case R.id.share:
+                ImageViewPagerFragment imageViewPagerFragment = (ImageViewPagerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
+                imageViewPagerFragment.shareImage();
+                return true;
+            case R.id.save:
+                imageViewPagerFragment = (ImageViewPagerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
+                imageViewPagerFragment.saveImageToGallery();
+                return true;
         }
-
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(int position, long itemId) {
+        String[] missionNames = getResources().getStringArray(R.array.missions);
+        final String missionName = missionNames[position];
+        MARS_IMAGES.setMission(missionName, this);
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                SharedPreferences sharedPreferences = getSharedPreferences(MARS_IMAGES_PREFERENCES_KEY, MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString(MISSION_NAME_PREFERENCE, missionName);
+                editor.commit();
+                return null;
+            }
+        }.execute();
+        return true;
     }
 
     public static class WifiStateReceiver extends BroadcastReceiver {
@@ -139,6 +204,26 @@ public class ImageListActivity extends ActionBarActivity {
                 EVERNOTE.loadMoreNotes(context, false);
             }
         }
+    }
+
+    private void createMarsTimeActivity() {
+        Intent marsTimeIntent = new Intent(MarsClockActivity.INTENT_ACTION_MARS_TIME);
+        startActivity(marsTimeIntent);
+    }
+
+    private void createMapActivity() {
+        Intent mapIntent = new Intent(MapActivity.INTENT_ACTION_MAP);
+        startActivity(mapIntent);
+    }
+
+    private void createAboutThisAppActivity() {
+        Intent aboutThisAppIntent = new Intent(AboutThisAppActivity.INTENT_ACTION_ABOUT_THIS_APP);
+        startActivity(aboutThisAppIntent);
+    }
+
+    private void createMosaicActivity() {
+        Intent mosaicIntent = new Intent(MosaicActivity.INTENT_ACTION_MOSAIC);
+        startActivity(mosaicIntent);
     }
 
 }

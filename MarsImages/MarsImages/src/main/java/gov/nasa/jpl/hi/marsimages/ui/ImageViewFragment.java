@@ -88,7 +88,7 @@ public class ImageViewFragment extends Fragment
     public static ImageViewFragment newInstance(String imageUrl, String imageViewTag) {
         final ImageViewFragment f = new ImageViewFragment();
         final Bundle args = new Bundle();
-        f.imageNumber = ImageViewActivity.getImageViewFragmentNumber(imageViewTag);
+        f.imageNumber = ImageViewPagerFragment.getImageViewFragmentNumber(imageViewTag);
         args.putString(IMAGE_DATA_EXTRA, imageUrl);
         f.setArguments(args);
         f.imageViewTag = imageViewTag;
@@ -332,8 +332,8 @@ public class ImageViewFragment extends Fragment
     public void onViewTap(View view, float v, float v2) {
         if (!Utils.hasKitKat())
             return;
-
-        ImageViewActivity activity = (ImageViewActivity)getActivity();
+    //FIXME this should hide/show caption animated
+//        ImageViewActivity activity = (ImageViewActivity)getActivity();
 //        activity.setFullscreen(!activity.isFullscreen());
     }
 

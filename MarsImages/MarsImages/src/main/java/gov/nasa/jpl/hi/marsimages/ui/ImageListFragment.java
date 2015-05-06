@@ -1,5 +1,6 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -35,6 +36,12 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
     public static final int THUMBNAIL_IMAGE_WIDTH = 50;
     private StickyListHeadersListView mStickyList;
     private ImageListAdapter mAdapter;
+
+    /**
+     * The fragment's current callback object, which is notified of list item
+     * clicks.
+     */
+    private Callbacks mCallbacks = sDummyCallbacks;
 
     public ImageListFragment() {
     } //empty ctor as per Fragment docs
@@ -93,12 +100,31 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
     }
 
     @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+
+        // Activities containing this fragment must implement its callbacks.
+        if (!(activity instanceof Callbacks)) {
+            throw new IllegalStateException("Activity must implement fragment's callbacks.");
+        }
+
+        mCallbacks = (Callbacks) activity;
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+
+        // Reset the active callbacks interface to the dummy implementation.
+        mCallbacks = sDummyCallbacks;
+    }
+
+    @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long id) {
+        // Notify the active callbacks interface (the activity, if the
+        // fragment is attached to one) that an item has been selected.
         mAdapter.setSelectedPosition(i);
-        Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
-        intent.putExtra(MarsImagesApp.IMAGE_INDEX, i);
-        intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.LIST_SOURCE);
-        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
+        mCallbacks.onItemSelected(i);
     }
 
     private class ImageListAdapter extends BaseAdapter implements StickyListHeadersAdapter {
@@ -185,7 +211,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
                 ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
             }
 
-            //FIXME: make this talk to the right activity
+            //FIXME: make this talk to the right activity. And also not load infinitely, which is bad.
 //            if (i == EVERNOTE.getNotesCount() - 1) {
 //                if (getActivity() instanceof ImageViewActivity) {
 //                    ImageViewActivity activity = (ImageViewActivity)getActivity();
@@ -214,4 +240,27 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         TextView detail;
         ImageView imageView;
     }
+
+    /**
+     * A callback interface that all activities containing this fragment must
+     * implement. This mechanism allows activities to be notified of item
+     * selections.
+     */
+    public interface Callbacks {
+        /**
+         * Callback for when an item has been selected.
+         */
+        public void onItemSelected(int imageIndex);
+    }
+
+    /**
+     * A dummy implementation of the {@link Callbacks} interface that does
+     * nothing. Used only when this fragment is not attached to an activity.
+     */
+    private static Callbacks sDummyCallbacks = new Callbacks() {
+        @Override
+        public void onItemSelected(int imageIndex) {
+        }
+    };
+
 }
