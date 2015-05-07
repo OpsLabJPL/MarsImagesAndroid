@@ -89,9 +89,9 @@ public class ImageViewPagerFragment extends Fragment {
 
                 //try to load more notes when the last image view page is selected
                 int pageCount = mAdapter.getCount();
-                //FIXME make this talk to the right activity
-//                if (position >= pageCount - mPager.getOffscreenPageLimit() - 1)
-//                    loadMoreImages();
+                if (position >= pageCount - mPager.getOffscreenPageLimit() - 1) {
+                    EVERNOTE.loadMoreImages(getActivity());
+                }
             }
         });
 

@@ -48,6 +48,8 @@ public class EvernoteMars {
 
     public static final EvernoteMars EVERNOTE = new EvernoteMars();
 
+    private final WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
+
     private static final int TIMEOUT = 15000;
 
     private static final String BEGIN_NOTE_LOADING = "beginNoteLoading";
@@ -92,6 +94,24 @@ public class EvernoteMars {
         };
         LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(mMessageReceiver,
                 mIntentFilter);
+    }
+
+    public void loadMoreImages(Context context) {
+        loadMoreImages(context, false);
+    }
+
+    public void loadMoreImages(Context context, boolean clearFirst) {
+        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+        if (!isConnected) {
+            IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+            intentFilter.setPriority(100);
+            LocalBroadcastManager.getInstance(MARS_IMAGES.getApplicationContext()).registerReceiver(mWifiStateReceiver, intentFilter);
+            Toast.makeText(context, "Unable to connect to the network.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        EVERNOTE.loadMoreNotes(context, clearFirst);
     }
 
     public int getNotesCount() {
@@ -390,6 +410,22 @@ public class EvernoteMars {
                     }
                 });
         return builder.create();
+    }
+
+    public static class WifiStateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+            if (isConnected) {
+                Log.d("wifi state connected", "Wifi reconnected.");
+                LocalBroadcastManager.getInstance(context).unregisterReceiver(this);
+                EVERNOTE.hasNotesRemaining = true;
+                EVERNOTE.loadMoreNotes(context, false);
+            }
+        }
     }
 }
 

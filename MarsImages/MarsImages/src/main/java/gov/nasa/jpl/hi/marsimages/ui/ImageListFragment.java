@@ -211,13 +211,8 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
                 ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
             }
 
-            //FIXME: make this talk to the right activity. And also not load infinitely, which is bad.
-//            if (i == EVERNOTE.getNotesCount() - 1) {
-//                if (getActivity() instanceof ImageViewActivity) {
-//                    ImageViewActivity activity = (ImageViewActivity)getActivity();
-//                    activity.loadMoreImages();
-//                }
-//            }
+            if (i == EVERNOTE.getNotesCount() - 1)
+                EVERNOTE.loadMoreImages(getActivity());
 
             return view;
         }

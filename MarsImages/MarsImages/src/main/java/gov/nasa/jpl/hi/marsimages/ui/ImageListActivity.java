@@ -25,6 +25,7 @@ import com.powellware.marsimages.R;
 
 import java.util.List;
 
+import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
@@ -40,8 +41,6 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
      * device.
      */
     private boolean mTwoPane;
-
-    private final WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,13 +65,7 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
         getSupportActionBar().setListNavigationCallbacks(mSpinnerAdapter, this);
         getSupportActionBar().setSelectedNavigationItem(missionIndex);
 
-        loadMoreImages();
-    }
-
-    @Override
-    protected void onDestroy() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mWifiStateReceiver);
-        super.onDestroy();
+        EVERNOTE.loadMoreImages(this);
     }
 
     @Override
@@ -87,27 +80,8 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
         super.onResume();
         long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
         ImageLoader.getInstance().resume();
-        //FIXME make this talk to the right activity
-//        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
-//            loadMoreImages(true);
-    }
-
-    void loadMoreImages() {
-        loadMoreImages(false);
-    }
-
-    private void loadMoreImages(boolean clearFirst) {
-        ConnectivityManager cm = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-        if (!isConnected) {
-            IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
-            intentFilter.setPriority(100);
-            LocalBroadcastManager.getInstance(this).registerReceiver(mWifiStateReceiver, intentFilter);
-            Toast.makeText(this, "Unable to connect to the network.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        EVERNOTE.loadMoreNotes(this, clearFirst);
+        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
+            EVERNOTE.loadMoreImages(this, true);
     }
 
     /**
@@ -188,22 +162,6 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
             }
         }.execute();
         return true;
-    }
-
-    public static class WifiStateReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            ConnectivityManager cm =
-                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-            boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-            if (isConnected) {
-                Log.d("wifi state connected", "Wifi reconnected.");
-                LocalBroadcastManager.getInstance(context).unregisterReceiver(this);
-                EVERNOTE.hasNotesRemaining = true;
-                EVERNOTE.loadMoreNotes(context, false);
-            }
-        }
     }
 
     private void createMarsTimeActivity() {

@@ -330,11 +330,7 @@ public class ImageViewFragment extends Fragment
 
     @Override
     public void onViewTap(View view, float v, float v2) {
-        if (!Utils.hasKitKat())
-            return;
-    //FIXME this should hide/show caption animated
-//        ImageViewActivity activity = (ImageViewActivity)getActivity();
-//        activity.setFullscreen(!activity.isFullscreen());
+        showCaption(mCaptionView.getAlpha() == 0);
     }
 
     public void showCaption(boolean visible) {
@@ -349,6 +345,7 @@ public class ImageViewFragment extends Fragment
         }
     }
 
+    //TODO decide whether to put this in later...maybe delay caption fade after a few seconds?
     protected void fadeOutCaptionView(int delayMillis) {
         AlphaAnimation anim = new AlphaAnimation(1.0f, 0.0f);
         anim.setAnimationListener(new Animation.AnimationListener() {

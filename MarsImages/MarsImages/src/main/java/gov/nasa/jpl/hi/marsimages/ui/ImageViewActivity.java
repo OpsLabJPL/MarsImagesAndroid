@@ -79,9 +79,8 @@ public class ImageViewActivity extends ActionBarActivity {
         super.onResume();
         long pauseTimeMillis = MARS_IMAGES.getPauseTimestamp();
         ImageLoader.getInstance().resume();
-        //FIXME make this talk to the right activity
-//        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
-//            loadMoreImages(true);
+        if (pauseTimeMillis > 0 && System.currentTimeMillis() - pauseTimeMillis > 30 * 60 * 1000)
+            EVERNOTE.loadMoreImages(this, true);
     }
 
     @Override
@@ -109,7 +108,7 @@ public class ImageViewActivity extends ActionBarActivity {
                             searchView.setQuery("", false);
                         } else {
                             EvernoteMars.setSearchWords(null, ImageViewActivity.this);
-//                            mPager.setCurrentItem(0); //FIXME
+//                            mPager.setCurrentItem(0); //search is broken, fix this...
                         }
                     }
                 });
