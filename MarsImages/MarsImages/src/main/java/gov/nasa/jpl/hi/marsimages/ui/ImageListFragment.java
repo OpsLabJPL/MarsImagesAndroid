@@ -34,7 +34,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 public class ImageListFragment extends Fragment implements AdapterView.OnItemClickListener {
 
     public static final int THUMBNAIL_IMAGE_WIDTH = 50;
-    private StickyListHeadersListView mStickyList;
+    public StickyListHeadersListView mStickyList;
     private ImageListAdapter mAdapter;
 
     /**

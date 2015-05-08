@@ -61,13 +61,15 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.VIEW_PAGER_SOURCE;
 
 public class ImageViewActivity extends ActionBarActivity {
 
+    private ImageViewPagerFragment imageViewPagerFragment;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
 //        Utils.enableStrictMode();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_view);
         int selectedPage = getIntent().getIntExtra(ImageViewPagerFragment.STATE_PAGE_NUMBER, 0);
-        final ImageViewPagerFragment imageViewPagerFragment = (ImageViewPagerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
+        imageViewPagerFragment = (ImageViewPagerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
         imageViewPagerFragment.setUpViewPager(selectedPage);
     }
 
@@ -85,6 +87,14 @@ public class ImageViewActivity extends ActionBarActivity {
         super.onPause();
         ImageLoader.getInstance().pause();
         MARS_IMAGES.setPauseTimestamp(System.currentTimeMillis());
+    }
+
+    @Override
+    public void finish() {
+        Intent data = getIntent();
+        data.putExtra(ImageViewPagerFragment.STATE_PAGE_NUMBER, imageViewPagerFragment.getViewPager().getCurrentItem());
+        setResult(RESULT_OK, data);
+        super.finish();
     }
 
     @Override

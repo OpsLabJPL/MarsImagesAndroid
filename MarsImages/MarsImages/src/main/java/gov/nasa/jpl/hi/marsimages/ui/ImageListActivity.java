@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
@@ -39,6 +40,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
 public class ImageListActivity extends ActionBarActivity implements ImageListFragment.Callbacks,
         ActionBar.OnNavigationListener {
 
+    public static final int IMAGE_LIST_REQUEST_CODE = 105;
     private SearchView searchView;
     private MenuItem mSearchItem;
 
@@ -47,11 +49,19 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
      * device.
      */
     private boolean mTwoPane;
+    private final int mRequestCode = IMAGE_LIST_REQUEST_CODE;
+    private int imageViewPageNumber = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_list);
+
+        if (imageViewPageNumber > 0) { //returning here after dismissing an ImageViewActivity
+            ImageListFragment listFragment = (ImageListFragment)
+                    getSupportFragmentManager().findFragmentById(R.layout.activity_image_list);
+            listFragment.mStickyList.setSelection(imageViewPageNumber);
+        }
 
         if (findViewById(R.id.fragment_image_view_pager) != null) {
             // The detail container view will be present only in the
@@ -109,8 +119,14 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
             // for the selected item ID.
             Intent imageViewIntent = new Intent(this, ImageViewActivity.class);
             imageViewIntent.putExtra(ImageViewPagerFragment.STATE_PAGE_NUMBER, imageIndex);
-            startActivity(imageViewIntent);
+            startActivityForResult(imageViewIntent, mRequestCode);
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        imageViewPageNumber = data.getIntExtra(ImageViewPagerFragment.STATE_PAGE_NUMBER, 0);
     }
 
     @Override

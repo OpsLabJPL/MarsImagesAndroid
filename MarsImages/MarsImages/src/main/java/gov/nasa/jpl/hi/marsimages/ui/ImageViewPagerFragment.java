@@ -53,6 +53,8 @@ public class ImageViewPagerFragment extends Fragment {
         // Required empty public constructor
     }
 
+    public ViewPager getViewPager() { return mPager; }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
