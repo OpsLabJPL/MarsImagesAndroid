@@ -61,9 +61,6 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.VIEW_PAGER_SOURCE;
 
 public class ImageViewActivity extends ActionBarActivity {
 
-    private SearchView searchView;
-    private MenuItem mSearchItem;
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
 //        Utils.enableStrictMode();
@@ -94,50 +91,6 @@ public class ImageViewActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.image_view, menu);
-
-        mSearchItem = menu.findItem(R.id.action_search);
-        if (mSearchItem != null) {
-            searchView = (SearchView) mSearchItem.getActionView();
-            if (searchView != null) {
-                searchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
-                    @SuppressLint("NewApi")
-                    @Override
-                    public void onFocusChange(View v, boolean hasFocus) {
-                        if (!hasFocus) {
-                            if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
-                            searchView.setQuery("", false);
-                        } else {
-                            EvernoteMars.setSearchWords(null, ImageViewActivity.this);
-//                            mPager.setCurrentItem(0); //search is broken, fix this...
-                        }
-                    }
-                });
-
-                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-                    @Override
-                    public boolean onQueryTextSubmit(String query) {
-                        if (searchView != null) {
-                            searchView.setVisibility(View.INVISIBLE);
-                            searchView.setVisibility(View.VISIBLE);
-                        }
-                        Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
-                        LocalBroadcastManager.getInstance(ImageViewActivity.this).sendBroadcast(intent);
-                        EvernoteMars.setSearchWords(query, ImageViewActivity.this);
-                        Log.d("search query", "user entered query " + query);
-                        return false;
-                    }
-
-                    @SuppressLint("NewApi")
-                    @Override
-                    public boolean onQueryTextChange(String query) {
-                        if (query == null || query.isEmpty()) {
-                            EvernoteMars.setSearchWords(null, ImageViewActivity.this);
-                        }
-                        return false;
-                    }
-                });
-            }
-        }
         return super.onCreateOptionsMenu(menu);
     }
 

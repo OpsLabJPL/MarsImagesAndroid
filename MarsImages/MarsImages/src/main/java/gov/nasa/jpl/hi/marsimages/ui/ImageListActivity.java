@@ -1,5 +1,6 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -12,6 +13,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,6 +29,7 @@ import java.util.List;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
+import gov.nasa.jpl.hi.marsimages.Utils;
 
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
@@ -35,6 +38,9 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
 
 public class ImageListActivity extends ActionBarActivity implements ImageListFragment.Callbacks,
         ActionBar.OnNavigationListener {
+
+    private SearchView searchView;
+    private MenuItem mSearchItem;
 
     /**
      * Whether or not the activity is in two-pane mode, i.e. running on a tablet
@@ -90,8 +96,6 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
      */
     @Override
     public void onItemSelected(int imageIndex) {
-
-
         if (mTwoPane) {
             // In two-pane mode, show the detail view in this activity by
             // adding or replacing the detail fragment using a
@@ -115,11 +119,57 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
         getMenuInflater().inflate(R.menu.menu_image_list, menu);
         if (mTwoPane)
             getMenuInflater().inflate(R.menu.image_view, menu);
+
+        mSearchItem = menu.findItem(R.id.action_search);
+        if (mSearchItem != null) {
+            searchView = (SearchView) mSearchItem.getActionView();
+            if (searchView != null) {
+                searchView.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
+                    @SuppressLint("NewApi")
+                    @Override
+                    public void onFocusChange(View v, boolean hasFocus) {
+                        if (!hasFocus) {
+                            if (Utils.hasIceCreamSandwich()) mSearchItem.collapseActionView();
+                            searchView.setQuery("", false);
+                        } else {
+                            EvernoteMars.setSearchWords(null, ImageListActivity.this);
+//                            mPager.setCurrentItem(0); //search is broken, fix this...
+                        }
+                    }
+                });
+
+                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+                        if (searchView != null) {
+                            searchView.setVisibility(View.INVISIBLE);
+                            searchView.setVisibility(View.VISIBLE);
+                        }
+                        Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
+                        LocalBroadcastManager.getInstance(ImageListActivity.this).sendBroadcast(intent);
+                        EvernoteMars.setSearchWords(query, ImageListActivity.this);
+                        Log.d("search query", "user entered query " + query);
+                        return false;
+                    }
+
+                    @SuppressLint("NewApi")
+                    @Override
+                    public boolean onQueryTextChange(String query) {
+                        if (query == null || query.isEmpty()) {
+                            EvernoteMars.setSearchWords(null, ImageListActivity.this);
+                        }
+                        return false;
+                    }
+                });
+            }
+        }
+
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        ImageViewPagerFragment imageViewPagerFragment = null;
         int id = item.getItemId();
         switch (id) {
             case R.id.about:
@@ -135,11 +185,13 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
                 createMosaicActivity();
                 return true;
             case R.id.share:
-                ImageViewPagerFragment imageViewPagerFragment = (ImageViewPagerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
+                imageViewPagerFragment = (ImageViewPagerFragment)
+                        getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
                 imageViewPagerFragment.shareImage();
                 return true;
             case R.id.save:
-                imageViewPagerFragment = (ImageViewPagerFragment) getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
+                imageViewPagerFragment = (ImageViewPagerFragment)
+                        getSupportFragmentManager().findFragmentById(R.id.fragment_image_view_pager);
                 imageViewPagerFragment.saveImageToGallery();
                 return true;
         }
