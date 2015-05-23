@@ -23,5 +23,8 @@
     <string name="earth">Earth</string>
     <string name="title_activity_map">Mission Map</string>
     <string name="title_activity_mosaic">MosaicActivity</string>
+    <string name="toggle_gyro">ToggleGyro</string>
+    <string name="go_forward">Forward</string>
+    <string name="go_back">Back</string>
 
 </resources>
