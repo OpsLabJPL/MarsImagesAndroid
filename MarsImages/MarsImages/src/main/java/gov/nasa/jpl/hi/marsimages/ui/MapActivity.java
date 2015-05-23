@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.graphics.PointF;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.widget.FrameLayout;
 
@@ -26,7 +27,7 @@ import gov.nasa.jpl.hi.marsimages.JsonReader;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
-public class MapActivity extends Activity {
+public class MapActivity extends ActionBarActivity {
 
     public static final String INTENT_ACTION_MAP = "gov.nasa.jpl.hi.marsimages.MAP";
     private static final String MAP = "MissionMap";

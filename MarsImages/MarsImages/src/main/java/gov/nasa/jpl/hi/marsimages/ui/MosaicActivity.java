@@ -1,34 +1,29 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.view.LayoutInflater;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 
 import com.powellware.marsimages.R;
 
-import rajawali.RajawaliFragment;
-import rajawali.RajawaliFragmentActivity;
 
-public class MosaicActivity extends RajawaliFragmentActivity {
+public class MosaicActivity extends AppCompatActivity {
 
     public static final String INTENT_ACTION_MOSAIC = "gov.nasa.jpl.hi.marsimages.MOSAIC";
+    private MarsRajawaliFragment mosaicFragment;
 
-    private MarsMosaicRenderer mRenderer;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
-        mRenderer = new MarsMosaicRenderer(this);
-        mRenderer.setSurfaceView(mSurfaceView);
-        mSurfaceView.setOnTouchListener(mRenderer);
-
-        super.setRenderer(mRenderer);
+        setContentView(R.layout.activity_mosaic);
+        mosaicFragment = new MarsRajawaliFragment();
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.mosaicSurfaceViewContainer, mosaicFragment, "mosaicFragment")
+                .commit();
     }
 
     @Override
@@ -46,8 +41,15 @@ public class MosaicActivity extends RajawaliFragmentActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.gyroMenuItem) {
+            mosaicFragment.getRenderer().toggleGyro();
             return true;
+        }
+        else if (id == R.id.goBack) {
+            return true;
+        }
+        else if (id == R.id.goForward) {
+
         }
 
         return super.onOptionsItemSelected(item);
