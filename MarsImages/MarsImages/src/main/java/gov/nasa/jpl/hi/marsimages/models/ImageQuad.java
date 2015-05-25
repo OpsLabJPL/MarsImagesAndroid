@@ -3,7 +3,12 @@ package gov.nasa.jpl.hi.marsimages.models;
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
 import gov.nasa.jpl.hi.marsimages.rovers.Rover;
+import rajawali.Camera;
+import rajawali.Frustum;
+import rajawali.bounds.BoundingSphere;
+import rajawali.math.Number3D;
 import rajawali.math.Quaternion;
+import rajawali.primitives.Sphere;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
@@ -20,7 +25,8 @@ public class ImageQuad extends Quad {
 
     private double boundingSphereRadius;
     private String imageId;
-    public final float[] center = new float[3];
+    private final float[] center = new float[3];
+    private final Number3D mBoundsCenter;
 
     static final float textureCoords[] = {0.f, 0.f, 0.f, 1.f, 1.f, 0.f, 1.f, 1.f};
 
@@ -29,20 +35,23 @@ public class ImageQuad extends Quad {
         this.imageId = imageID;
         String cameraId = MARS_IMAGES.getMission().getCameraId(imageID);
         this.cameraId = cameraId;
-        int layer = MARS_IMAGES.getMission().getLayer(cameraId, imageID);
+        int layer = 5 + MARS_IMAGES.getMission().getLayer(cameraId, imageID);
         this.layer = layer;
 
         float[][] vertices = new float[4][];
         for (int i = 0; i < 4; i++) { vertices[i] = new float[3]; }
         getImageVertices(model, qLL, vertices, layer);
-        System.arraycopy(vertices[0],0,v0,0,3);
+        System.arraycopy(vertices[0], 0, v0, 0, 3);
         System.arraycopy(vertices[1],0,v1,0,3);
         System.arraycopy(vertices[2],0,v2,0,3);
         System.arraycopy(vertices[3],0,v3,0,3);
 
+        init();
+
         center[0] = (v0[0]+v2[0])/2;
         center[1] = (v0[1]+v2[1])/2;
         center[2] = (v0[2]+v2[2])/2;
+        mBoundsCenter = new Number3D(center[0], center[1], center[2]);
 
         //assign to the radius the distance from the center to the farthest vertex
         double d0 = distanceBetween(center, v0);
@@ -54,10 +63,15 @@ public class ImageQuad extends Quad {
         if (d1>boundingSphereRadius) boundingSphereRadius=d1;
         if (d2>boundingSphereRadius) boundingSphereRadius=d2;
         if (d3>boundingSphereRadius) boundingSphereRadius=d3;
-
-        init();
     }
 
+    public Number3D getBoundsCenter() {
+        return mBoundsCenter;
+    }
+
+    public double getBoundsRadius() {
+        return boundingSphereRadius;
+    }
 
     private double cameraFOVRadians() {
         if (cameraId != null)
@@ -161,4 +175,15 @@ public class ImageQuad extends Quad {
         vertices[3][1] = (float)pfinal[1];
         vertices[3][2] = (float)pfinal[2];
     }
+
+    public boolean cameraIsLookingAtMe(Camera camera) {
+        Number3D cameraPointing = new Number3D(camera.getLookAt());
+        cameraPointing.normalize();
+        Number3D sphereVector = new Number3D(mBoundsCenter);
+        sphereVector.normalize();
+        double angleBetweenRadians = Math.acos(Number3D.dot(cameraPointing, sphereVector));
+        double cameraFOVRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
+        return angleBetweenRadians - Math.toRadians(camera.getFieldOfView())*.7071 - cameraFOVRadians*.7071 <= 0;
+    }
+
 }
