@@ -24,8 +24,10 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import gov.nasa.jpl.hi.marsimages.models.CameraModel;
@@ -55,6 +57,8 @@ public abstract class Rover {
     int instrumentIndex;
     int eyeIndex;
     int sampleTypeIndex;
+
+    Map<Integer, List<CSVRecord>> locationsBySite = new HashMap<Integer, List<CSVRecord>>();
 
     final Set<String> stereoInstruments = new HashSet<>();
 
@@ -132,8 +136,12 @@ public abstract class Rover {
     }
 
     public List<CSVRecord> siteLocationData(int siteIndex) {
+        //return cached results if we have them
+        //TODO invalidate cache when needed (after a day?)
+        List<CSVRecord> cachedLocations = locationsBySite.get(siteIndex);
+        if (cachedLocations != null) return cachedLocations;
 
-        List<CSVRecord> locations = new ArrayList<CSVRecord>();
+        List<CSVRecord> locations = new ArrayList<>();
         URL locationsURL = null;
 
         try {
@@ -147,6 +155,7 @@ public abstract class Rover {
                 for (final CSVRecord record : parser) {
                     locations.add(record);
                 }
+                locationsBySite.put(siteIndex, locations);
             } finally {
                 parser.close();
                 reader.close();
