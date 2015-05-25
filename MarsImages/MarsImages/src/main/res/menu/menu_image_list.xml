@@ -1,7 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="gov.nasa.jpl.hi.marsimages.ui.ImageListActivity" >
+    tools:context="gov.nasa.jpl.hi.marsimages.ui.ImageListActivity">
     <item android:id="@+id/action_search"
         android:menuCategory="system"
         android:orderInCategory="0"

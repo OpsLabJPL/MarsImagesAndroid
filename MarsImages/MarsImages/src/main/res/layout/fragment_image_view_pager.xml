@@ -1,0 +1,14 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/fragment_image_view_pager"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="gov.nasa.jpl.hi.marsimages.ui.ImageViewPagerFragment">
+
+    <gov.nasa.jpl.hi.marsimages.ui.HackyViewPager
+        android:id="@+id/pager"
+        android:background="#FF000000"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"/>
+
+</FrameLayout>

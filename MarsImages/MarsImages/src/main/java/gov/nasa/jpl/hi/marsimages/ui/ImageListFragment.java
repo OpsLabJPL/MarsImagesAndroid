@@ -1,5 +1,6 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -33,9 +34,14 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 public class ImageListFragment extends Fragment implements AdapterView.OnItemClickListener {
 
     public static final int THUMBNAIL_IMAGE_WIDTH = 50;
-    private StickyListHeadersListView mStickyList;
+    public StickyListHeadersListView mStickyList;
     private ImageListAdapter mAdapter;
-//    private SwipeRefreshLayout mRefreshLayout;
+
+    /**
+     * The fragment's current callback object, which is notified of list item
+     * clicks.
+     */
+    private Callbacks mCallbacks = sDummyCallbacks;
 
     public ImageListFragment() {
     } //empty ctor as per Fragment docs
@@ -48,8 +54,6 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         mAdapter = new ImageListAdapter(this.getActivity());
         mStickyList.setAdapter(mAdapter);
         mStickyList.setDrawingListUnderStickyHeader(false);
-//        mRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_layout);
-//        mRefreshLayout.setOnRefreshListener(this);
 
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
@@ -65,13 +69,11 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(MarsImagesApp.MISSION_CHANGED) ||
                     intent.getAction().equals(MarsImagesApp.NOTES_CLEARED)) {
-//                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
                 mAdapter.setCount(0);
                 mAdapter.notifyDataSetChanged();
             } else if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 mAdapter.setCount(EVERNOTE.getNotesCount());
                 mAdapter.notifyDataSetChanged();
-//                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(false);
             } else if (intent.getAction().equals(MarsImagesApp.IMAGE_SELECTED)) {
                 String selectionSource = intent.getStringExtra(MarsImagesApp.SELECTION_SOURCE);
                 if (!selectionSource.equals(MarsImagesApp.LIST_SOURCE)) {
@@ -98,24 +100,32 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
     }
 
     @Override
-    public void onItemClick(AdapterView<?> adapterView, View view, int i, long id) {
-        mAdapter.setSelectedPosition(i);
-        Intent intent = new Intent(MarsImagesApp.IMAGE_SELECTED);
-        intent.putExtra(MarsImagesApp.IMAGE_INDEX, i);
-        intent.putExtra(MarsImagesApp.SELECTION_SOURCE, MarsImagesApp.LIST_SOURCE);
-        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+
+        // Activities containing this fragment must implement its callbacks.
+        if (!(activity instanceof Callbacks)) {
+            throw new IllegalStateException("Activity must implement fragment's callbacks.");
+        }
+
+        mCallbacks = (Callbacks) activity;
     }
 
-//    @Override
-//    public void onRefresh() {
-//        if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
-//        mAdapter.setCount(0);
-//        mAdapter.notifyDataSetChanged();
-//        Intent intent = new Intent(MarsImagesApp.NOTES_CLEARED);
-//        LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
-//
-//        EvernoteMars.reloadNotes(getActivity());
-//    }
+    @Override
+    public void onDetach() {
+        super.onDetach();
+
+        // Reset the active callbacks interface to the dummy implementation.
+        mCallbacks = sDummyCallbacks;
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long id) {
+        // Notify the active callbacks interface (the activity, if the
+        // fragment is attached to one) that an item has been selected.
+        mAdapter.setSelectedPosition(i);
+        mCallbacks.onItemSelected(i);
+    }
 
     private class ImageListAdapter extends BaseAdapter implements StickyListHeadersAdapter {
 
@@ -201,13 +211,8 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
                 ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
             }
 
-            if (i == EVERNOTE.getNotesCount() - 1) {
-//                if (mRefreshLayout != null) mRefreshLayout.setRefreshing(true);
-                if (getActivity() instanceof ImageViewActivity) {
-                    ImageViewActivity activity = (ImageViewActivity)getActivity();
-                    activity.loadMoreImages();
-                }
-            }
+            if (i == EVERNOTE.getNotesCount() - 1)
+                EVERNOTE.loadMoreImages(getActivity());
 
             return view;
         }
@@ -230,4 +235,27 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         TextView detail;
         ImageView imageView;
     }
+
+    /**
+     * A callback interface that all activities containing this fragment must
+     * implement. This mechanism allows activities to be notified of item
+     * selections.
+     */
+    public interface Callbacks {
+        /**
+         * Callback for when an item has been selected.
+         */
+        public void onItemSelected(int imageIndex);
+    }
+
+    /**
+     * A dummy implementation of the {@link Callbacks} interface that does
+     * nothing. Used only when this fragment is not attached to an activity.
+     */
+    private static Callbacks sDummyCallbacks = new Callbacks() {
+        @Override
+        public void onItemSelected(int imageIndex) {
+        }
+    };
+
 }

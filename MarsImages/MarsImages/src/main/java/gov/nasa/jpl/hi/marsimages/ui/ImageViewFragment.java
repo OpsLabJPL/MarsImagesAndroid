@@ -88,7 +88,7 @@ public class ImageViewFragment extends Fragment
     public static ImageViewFragment newInstance(String imageUrl, String imageViewTag) {
         final ImageViewFragment f = new ImageViewFragment();
         final Bundle args = new Bundle();
-        f.imageNumber = ImageViewActivity.getImageViewFragmentNumber(imageViewTag);
+        f.imageNumber = ImageViewPagerFragment.getImageViewFragmentNumber(imageViewTag);
         args.putString(IMAGE_DATA_EXTRA, imageUrl);
         f.setArguments(args);
         f.imageViewTag = imageViewTag;
@@ -143,9 +143,9 @@ public class ImageViewFragment extends Fragment
     private void setupCaptionAndImageSelectionMenu(final Note note) {
         if (getActivity() == null) return;
 
-        final boolean fullscreen = ((ImageViewActivity) getActivity()).isFullscreen();
-        mCaptionView.setAlpha(fullscreen ? 0 : 1);
-        mSelectButton.setAlpha(fullscreen ? 0 : 1);
+//        final boolean fullscreen = ((ImageViewActivity) getActivity()).isFullscreen();
+//        mCaptionView.setAlpha(fullscreen ? 0 : 1);
+//        mSelectButton.setAlpha(fullscreen ? 0 : 1);
 
         String caption = MARS_IMAGES.getMission().getCaptionText(note);
         mCaptionView.setText(caption);
@@ -330,11 +330,7 @@ public class ImageViewFragment extends Fragment
 
     @Override
     public void onViewTap(View view, float v, float v2) {
-        if (!Utils.hasKitKat())
-            return;
-
-        ImageViewActivity activity = (ImageViewActivity)getActivity();
-        activity.setFullscreen(!activity.isFullscreen());
+        showCaption(mCaptionView.getAlpha() == 0);
     }
 
     public void showCaption(boolean visible) {
@@ -349,6 +345,7 @@ public class ImageViewFragment extends Fragment
         }
     }
 
+    //TODO decide whether to put this in later...maybe delay caption fade after a few seconds?
     protected void fadeOutCaptionView(int delayMillis) {
         AlphaAnimation anim = new AlphaAnimation(1.0f, 0.0f);
         anim.setAnimationListener(new Animation.AnimationListener() {
