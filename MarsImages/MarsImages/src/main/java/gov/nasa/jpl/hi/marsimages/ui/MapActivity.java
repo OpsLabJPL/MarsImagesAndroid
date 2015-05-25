@@ -140,7 +140,7 @@ public class MapActivity extends ActionBarActivity {
     private void loadLatestTraversePath() {
         points = new ArrayList<LatLng>();
         rmcsForPoints = new HashMap<Integer, int[]>();
-        List<int[]> locationManifest = MARS_IMAGES.getLocations();
+        List<int[]> locationManifest = MARS_IMAGES.getLocations(this);
         int locationCount = locationManifest.size();
         if (locationCount > 0) {
             latestSiteIndex = locationManifest.get(locationCount-1)[0];

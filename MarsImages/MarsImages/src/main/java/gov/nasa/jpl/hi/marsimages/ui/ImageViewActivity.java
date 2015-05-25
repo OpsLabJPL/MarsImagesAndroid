@@ -75,6 +75,8 @@ public class ImageViewActivity extends ActionBarActivity
     private ActionBarDrawerToggle mDrawerToggle;
     private boolean fullscreen;
     private final WifiStateReceiver mWifiStateReceiver = new WifiStateReceiver();
+    private MenuItem mMapMenuItem;
+    private MenuItem mMosaicMenuItem;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -86,6 +88,7 @@ public class ImageViewActivity extends ActionBarActivity
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
         filter.addAction(MarsImagesApp.IMAGE_SELECTED);
         filter.addAction(MarsImagesApp.NOTES_CLEARED);
+        filter.addAction(MarsImagesApp.LOCATIONS_LOADED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, filter);
 
         mDrawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -230,6 +233,7 @@ public class ImageViewActivity extends ActionBarActivity
         return true;
     }
 
+
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -255,6 +259,9 @@ public class ImageViewActivity extends ActionBarActivity
                 if (selectionSource != null && !selectionSource.equals(VIEW_PAGER_SOURCE)) {
                     mPager.setCurrentItem(imageIndex);
                 }
+            } else if (intent.getAction().equals(MarsImagesApp.LOCATIONS_LOADED)) {
+                MarsImagesApp.enableMenuItem(mMosaicMenuItem);
+                MarsImagesApp.enableMenuItem(mMapMenuItem);
             }
         }
     };
@@ -286,6 +293,20 @@ public class ImageViewActivity extends ActionBarActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.image_view, menu);
+
+        mMapMenuItem = menu.findItem(R.id.map);
+        mMosaicMenuItem = menu.findItem(R.id.mosaic);
+        if (!MARS_IMAGES.hasLocations()) {
+            MarsImagesApp.disableMenuItem(mMapMenuItem);
+            MarsImagesApp.disableMenuItem(mMosaicMenuItem);
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... params) {
+                    MARS_IMAGES.getLocations(ImageViewActivity.this);
+                    return null;
+                }
+            }.execute();
+        }
 
         mSearchItem = menu.findItem(R.id.action_search);
         if (mSearchItem != null) {

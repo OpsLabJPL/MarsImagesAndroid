@@ -6,16 +6,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.opengl.GLES20;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import com.evernote.edam.type.Note;
@@ -47,8 +41,6 @@ import rajawali.materials.DiffuseMaterial;
 import rajawali.materials.SimpleMaterial;
 import rajawali.materials.TextureInfo;
 import rajawali.materials.TextureManager;
-import rajawali.math.Matrix4;
-import rajawali.math.Number3D;
 import rajawali.primitives.Plane;
 import rajawali.renderer.RajawaliRenderer;
 
@@ -61,30 +53,27 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 /**
  * Created by mpowell on 3/21/15.
  */
-public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouchListener, SensorEventListener {
+public class MarsMosaicRenderer extends RajawaliRenderer {
 
-    public static final float MIN_ZOOM = 0.5f;
-    public static final float MAX_ZOOM = 5.0f;
     private static final double Y_ROTATION_UPPER_LIMIT = Math.PI / 2;
     private static final double Y_ROTATION_LOWER_LIMIT = -Math.PI / 2;
+    public static final float FAR_PLANE = 12.0f;
+    public static final float NEAR_PLANE = 0.1f;
+    public static final int NOMINAL_FOV = 45;
     private final float TOUCH_SCALE_FACTOR = .0015f;
     private final float COMPASS_HEIGHT = 0.5f;
     private final double[] x_axis = {1f, 0f, 0f};
     private final double[] y_axis = {0f, 1f, 0f};
-    private final SensorManager mSensorManager;
-//    private final Sensor mRotationVectorSensor;
 
     private PointLight mLight;
     private int[] rmc;
     private double[] qLL;
-    private Map<String, Note> photosInScene = new ConcurrentHashMap<>();
+    private Map<String, Note> notesInScene = new ConcurrentHashMap<>();
     private Map<String, Boolean> imagesLoading = new ConcurrentHashMap<>();
-    private float mPreviousX = 0f;
-    private float mPreviousY = 0f;
+    private float mScaleFactor = 1f;
     private float cameraRelativeXMotion = 0f;
     private float cameraRelativeYMotion = 0f;
-    private final ScaleGestureDetector mScaleDetector;
-    private float mScaleFactor = 1f;
+
     private DiffuseMaterial yellowMaterial;
     private Quad mCompass;
     private Map<String, ImageQuad> photoQuads = new ConcurrentHashMap<>();
@@ -95,8 +84,9 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
     private double rotationX = 0;
     private double rotationY = 0;
     private boolean gyroEnabled = false;
-    private float deviceAzimuth;
-    private float devicePitch;
+    private double deviceAzimuth = 0;
+    private double devicePitch = 0;
+    private Plane plane;
 
     public MarsMosaicRenderer(Context context) {
         super(context);
@@ -108,68 +98,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         setFrameRate(60);
         IntentFilter filter = new IntentFilter(EvernoteMars.END_NOTE_LOADING);
         LocalBroadcastManager.getInstance(context).registerReceiver(mMessageReceiver, filter);
-        mScaleDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            @Override
-            public boolean onScale(ScaleGestureDetector detector) {
-                float scaleFactor = detector.getScaleFactor();
-                mScaleFactor *= scaleFactor;
-                // Don't let the object get too small or too large.
-                mScaleFactor = Math.max(MIN_ZOOM, Math.min(mScaleFactor, MAX_ZOOM));
-                return true;
-            }
-        });
-        mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-//        mRotationVectorSensor = mSensorManager.getDefaultSensor(
-//                Sensor.TYPE_ROTATION_VECTOR);
-//        mSensorManager.registerListener(this, mRotationVectorSensor, 10000);
-        Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-        mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
     }
-
-    private final float[] mRotationMatrix = new float[16];
-    private final float[] values = new float[3];
-
-    float[] mGravity;
-    float[] mGeomagnetic;
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-            // convert the rotation-vector to a 4x4 matrix. the matrix
-            // is interpreted by Open GL as the inverse of the
-            // rotation-vector, which is what we want.'
-            SensorManager.getRotationMatrixFromVector(
-                    mRotationMatrix, event.values);
-            SensorManager.getOrientation(mRotationMatrix, values);
-            Log.d(TAG,"Values: "+Math.toDegrees(values[0])+"\t"+Math.toDegrees(values[1])+"\t"+Math.toDegrees(values[2]));
-            deviceAzimuth = values[0]; //radian angle about Z axis pointing down toward Earth, counterclockwise
-            if (deviceAzimuth < 0) deviceAzimuth += 2*Math.PI;
-            devicePitch = values[1]; //radian angle about X axis pointing toward West, counterclockwise. Offset by 90 degrees'
-            if (Float.isNaN(devicePitch)) devicePitch = 0;
-            devicePitch += Math.PI/4; //offset of 90 degrees to put 0 at the horizon instead of up.
-        }
-
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-            mGravity = event.values;
-        if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
-            mGeomagnetic = event.values;
-        if (mGravity != null && mGeomagnetic != null) {
-            float R[] = new float[9];
-            float I[] = new float[9];
-            boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
-            if (success) {
-                float orientation[] = new float[3];
-                SensorManager.getOrientation(R, orientation);
-                deviceAzimuth = orientation[0]; // orientation contains: azimut, pitch and roll
-                devicePitch = orientation[1];
-                Log.d(TAG, "Azimuth: "+Math.toDegrees(deviceAzimuth)+"   Pitch: "+Math.toDegrees(devicePitch));
-            }
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) { }
 
     protected void initScene() {
         mLight = new PointLight();
@@ -182,34 +111,16 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
 
         int[] rmc = EVERNOTE.getNearestRMC();
         addImagesToScene(rmc);
-    }
-
-    private void addHoverCompass() {
-        int[] maxTextureSize = new int[1];
-        GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
-        Bitmap bg = null;
-        if (maxTextureSize[0] >= 2048)
-            bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_2k);
-        else
-            bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_1k);
-
-        Plane plane = new Plane(10, 10, 2, 2);
-        plane.setPosition(0f,COMPASS_HEIGHT,0f);
-        plane.setRotX(-90);
-        plane.setMaterial(new SimpleMaterial(AMaterial.ALPHA_MASKING));
-        plane.addTexture(mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, true));
-        bg.recycle();
-        plane.addLight(mLight);
-        addChild(plane);
+        ((MosaicActivity)getContext()).updateLocationMenuItems();
     }
 
     @Override
     public void onDrawFrame(GL10 glUnused) {
 
         setCameraLookDirection();
-        mCamera.setFieldOfView(45/mScaleFactor);
-        mCamera.setFarPlane(12.0f);
-        mCamera.setNearPlane(0.1f);
+        mCamera.setFieldOfView(NOMINAL_FOV / mScaleFactor);
+        mCamera.setFarPlane(FAR_PLANE);
+        mCamera.setNearPlane(NEAR_PLANE);
         mCamera.setProjectionMatrix(mSurfaceView.getWidth(), mSurfaceView.getHeight());
 
         //update imagequads to use image texture or line mode depending on visibility and if the image is loaded yet into memory
@@ -218,41 +129,81 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         super.onDrawFrame(glUnused);
     }
 
-    private void setCameraLookDirection() {
-        if (!gyroEnabled) {
-            //set camera rotation and field of view based on gesture input
-            rotationX += cameraRelativeXMotion * TOUCH_SCALE_FACTOR;
-            rotationY += cameraRelativeYMotion * TOUCH_SCALE_FACTOR;
-            cameraRelativeXMotion = cameraRelativeYMotion = 0f;
-            rotationY = Math.max(rotationY, Y_ROTATION_LOWER_LIMIT);
-            rotationY = Math.min(rotationY, Y_ROTATION_UPPER_LIMIT);
-            M.quatva(y_axis, rotationX, rotAz);
-            M.quatva(x_axis, rotationY, rotEl);
-        } else {
-            M.quatva(y_axis, deviceAzimuth, rotAz);
-            M.quatva(x_axis, devicePitch, rotEl);
-        }
-        M.multqv(rotEl, forwardVector, look1);
-        M.multqv(rotAz, look1, look2);
-        mCamera.setLookAt((float) look2[0], (float) look2[1], (float) look2[2]);
+    public void setScaleFactor(float scale) { mScaleFactor = scale; }
+
+    public void addImagesToScene(int[] rmc) {
+        this.rmc = rmc;
+        Rover mission = MARS_IMAGES.getMission();
+        ((MosaicActivity)getContext()).updateCaption(rmc);
+        int site_index = rmc[0];
+        int drive_index = rmc[1];
+        qLL = mission.localLevelQuaternion(site_index, drive_index);
+        EVERNOTE.setSearchWords(String.format("RMC %06d-%06d", site_index, drive_index), mContext);
+        EVERNOTE.reloadNotes(mContext); //rely on the resultant note load end broadcast receiver to populate images in the scene
+    }
+
+    public void toggleGyro() {
+        gyroEnabled = !gyroEnabled;
+        Log.d(TAG, "Gyro " + (gyroEnabled ? "True" : "False"));
+    }
+
+    public int[] getRMC() {
+        return rmc;
+    }
+
+    public void setDeviceOrientationAngles(float deviceAzimuth, float devicePitch) {
+        this.deviceAzimuth = deviceAzimuth;
+        this.devicePitch = devicePitch;
+    }
+
+    public void incrementCameraMotion(float xMovement, float yMovement) {
+        cameraRelativeXMotion += xMovement;
+        cameraRelativeYMotion += yMovement;
+    }
+
+    public void deleteImages() {
+        mSurfaceView.queueEvent(new Runnable() {
+            @Override
+            public void run() {
+                notesInScene.clear();
+                imagesLoading.clear();
+                photoQuads.clear();
+                photoTextures.clear();
+                clearChildren();
+                addChild(plane);
+            }
+        });
     }
 
     private void prepareImageQuads() {
 
         int skippedImages = 0;
 
+        float[] viewMatrix = mCamera.getViewMatrix();
+        float[] projectionMatrix = mCamera.getProjectionMatrix();
+        mCamera.updateFrustum(projectionMatrix, viewMatrix);
+
         for (String title: photoQuads.keySet()) {
             ImageQuad imageQuad = photoQuads.get(title);
-//            //frustum culling: don't draw if the bounding sphere of the image quad isn't in the camera frustum
-//            AGLKFrustum frustum = ((MosaicViewController*)_viewController).frustum;
-//            if (AGLKFrustumCompareSphere(&frustum, imageQuad.center, imageQuad.boundingSphereRadius) == AGLKFrustumOut) {
-//                skippedImages++;
-//                [self deleteImageAndTexture: title];
-//                continue;
-//            }
+
+
+
+//            if (!mCamera.mFrustum.sphereInFrustum(imageQuad.getBoundsCenter(), (float)imageQuad.getBoundsRadius())) { //This doesn't work. Bad on them.
+
+            if (!imageQuad.cameraIsLookingAtMe(getCamera())) {
+                skippedImages++;
+                for (TextureInfo textureInfo : imageQuad.getTextureInfoList())
+                    imageQuad.removeTexture(textureInfo);
+                imageQuad.getTextureInfoList().clear();
+                photoTextures.remove(title);
+                imagesLoading.remove(title);
+                continue;
+            }
+
             if (imageQuad.getTextureInfoList().size() == 0)
                 prepareImageQuad(imageQuad, title);
         }
+        Log.d(TAG, "images skipped: "+skippedImages);
     }
 
     private void prepareImageQuad(ImageQuad imageQuad, String title) {
@@ -271,8 +222,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
         }
     }
 
-    private void loadImageAndTexture(final String title) {
-        final Note photo = photosInScene.get(title);
+     private void loadImageAndTexture(final String title) {
+        final Note photo = notesInScene.get(title);
         if (photo == null) {
             Log.w(TAG, "No photo in scene with title "+title);
             return;
@@ -287,6 +238,10 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
             ImageLoader.getInstance().loadImage(uri, new ImageSize(512, 512), new SimpleImageLoadingListener() {
                 @Override
                 public void onLoadingComplete(String imageUri, View view, final Bitmap loadedImage) {
+
+                    //if this image is no longer in the scene, early out
+                    if (!imagesLoading.containsKey(title)) return;
+
                     int width = loadedImage.getWidth();
                     int height = loadedImage.getHeight();
                     Log.d(TAG, "Loaded image size: "+ width +"x"+ height +" for image " + uri);
@@ -311,16 +266,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
 //            [self makeTexture:image withTitle:title grayscale:[photo isGrayscale]];
 //            [photo unloadUnderlyingImage]; //improves memory management quite significantly
 //        }
-    }
-
-    public void addImagesToScene(int[] rmc) {
-        this.rmc = rmc;
-        Rover mission = MARS_IMAGES.getMission();
-        int site_index = rmc[0];
-        int drive_index = rmc[1];
-        qLL = mission.localLevelQuaternion(site_index, drive_index);
-        EVERNOTE.setSearchWords(String.format("RMC %06d-%06d", site_index, drive_index), mContext);
-        EVERNOTE.reloadNotes(mContext); //rely on the resultant note load end broadcast receiver to populate images in the scene
     }
 
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -350,8 +295,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                             List<Note> notes = EVERNOTE.getNotes();
                             binImagesByPointing(notes);
                             int mosaicCount = 0;
-                            for (String photoTitle : photosInScene.keySet()) {
-                                Note photo = photosInScene.get(photoTitle);
+                            for (String photoTitle : notesInScene.keySet()) {
+                                Note photo = notesInScene.get(photoTitle);
 
                                 JSONArray model_json = rover.modelJson(photo);
                                 if (model_json == null)
@@ -399,8 +344,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                 double[] v2 = CameraModel.pointingVector(rover.modelJson(prospectiveImage));
                 double angleThreshold = rover.fieldOfView(prospectiveImage)/10; //less overlap than ~5 degrees for Mastcam is problem for memory: see 42-852 looking south for example
                 boolean tooCloseToAnotherImage = false;
-                for (String title : photosInScene.keySet()) {
-                    Note image = photosInScene.get(title);
+                for (String title : notesInScene.keySet()) {
+                    Note image = notesInScene.get(title);
                     double[] v1 = CameraModel.pointingVector(rover.modelJson(image));
                     if (CameraModel.angularDistance(v1, v2) < angleThreshold &&
                         M.epsilonEquals(rover.fieldOfView(image), rover.fieldOfView(prospectiveImage))) {
@@ -409,48 +354,47 @@ public class MarsMosaicRenderer extends RajawaliRenderer implements View.OnTouch
                     }
                 }
                 if (!tooCloseToAnotherImage)
-                    photosInScene.put(prospectiveImage.getTitle(), prospectiveImage);
+                    notesInScene.put(prospectiveImage.getTitle(), prospectiveImage);
             }
         }
     };
 
-    @Override
-    public boolean onTouch(View v, MotionEvent e) {
-        // MotionEvent reports input details from the touch screen
-        // and other input controls. In this case, you are only
-        // interested in events where the touch position changed.
-
-        // Let the ScaleGestureDetector inspect all events.
-        mScaleDetector.onTouchEvent(e);
-
-        float x = e.getX();
-        float y = e.getY();
-//        Log.d(TAG, "Motion event: "+x+", "+y);
-        switch (e.getAction() & MotionEvent.ACTION_MASK) {
-            case MotionEvent.ACTION_DOWN:
-                mPreviousX = e.getX();
-                mPreviousY = e.getY();
-                break;
-
-            case MotionEvent.ACTION_MOVE:
-                cameraRelativeXMotion += x - mPreviousX;
-                cameraRelativeYMotion += y - mPreviousY;
-
-                mPreviousX = x;
-                mPreviousY = y;
-                break;
-
-            case MotionEvent.ACTION_UP:
-                mPreviousX = 0f;
-                mPreviousY = 0f;
-                break;
+    private void setCameraLookDirection() {
+        if (!gyroEnabled) {
+            //set camera rotation and field of view based on gesture input
+            rotationX += cameraRelativeXMotion * TOUCH_SCALE_FACTOR;
+            rotationY += cameraRelativeYMotion * TOUCH_SCALE_FACTOR;
+            cameraRelativeXMotion = cameraRelativeYMotion = 0f;
+            rotationY = Math.max(rotationY, Y_ROTATION_LOWER_LIMIT);
+            rotationY = Math.min(rotationY, Y_ROTATION_UPPER_LIMIT);
+            M.quatva(y_axis, rotationX, rotAz);
+            M.quatva(x_axis, rotationY, rotEl);
+        } else {
+            M.quatva(y_axis, deviceAzimuth, rotAz);
+            M.quatva(x_axis, devicePitch, rotEl);
         }
-        return true;
+        M.multqv(rotEl, forwardVector, look1);
+        M.multqv(rotAz, look1, look2);
+        mCamera.setLookAt((float) look2[0], (float) look2[1], (float) look2[2]);
     }
 
-    public void toggleGyro() {
-        gyroEnabled = !gyroEnabled;
-        Log.d(TAG, "Gyro "+ (gyroEnabled ? "True" : "False"));
+    private void addHoverCompass() {
+        int[] maxTextureSize = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
+        Bitmap bg = null;
+        if (maxTextureSize[0] >= 2048)
+            bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_2k);
+        else
+            bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_1k);
+
+        plane = new Plane(10, 10, 2, 2);
+        plane.setPosition(0f,COMPASS_HEIGHT,0f);
+        plane.setRotX(-90);
+        plane.setMaterial(new SimpleMaterial(AMaterial.ALPHA_MASKING));
+        plane.addTexture(mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, true));
+        bg.recycle();
+        plane.addLight(mLight);
+        addChild(plane);
     }
 
     private static class QuadInitializer {
