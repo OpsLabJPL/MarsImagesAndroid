@@ -51,6 +51,8 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
     private boolean mTwoPane;
     private final int mRequestCode = IMAGE_LIST_REQUEST_CODE;
     private int imageViewPageNumber = 0;
+    MenuItem mMapMenuItem;
+    MenuItem mMosaicMenuItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,6 +137,20 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
         getMenuInflater().inflate(R.menu.menu_image_list, menu);
         if (mTwoPane)
             getMenuInflater().inflate(R.menu.image_view, menu);
+
+        mMapMenuItem = menu.findItem(R.id.map);
+        mMosaicMenuItem = menu.findItem(R.id.mosaic);
+        if (!MARS_IMAGES.hasLocations()) {
+            MarsImagesApp.disableMenuItem(mMapMenuItem);
+            MarsImagesApp.disableMenuItem(mMosaicMenuItem);
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... params) {
+                    MARS_IMAGES.getLocations(ImageListActivity.this);
+                    return null;
+                }
+            }.execute();
+        }
 
         mSearchItem = menu.findItem(R.id.action_search);
         if (mSearchItem != null) {

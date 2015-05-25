@@ -59,6 +59,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
         filter.addAction(MarsImagesApp.MISSION_CHANGED);
         filter.addAction(MarsImagesApp.IMAGE_SELECTED);
         filter.addAction(MarsImagesApp.NOTES_CLEARED);
+        filter.addAction(MarsImagesApp.LOCATIONS_LOADED);
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mMessageReceiver, filter);
 
         return view;
@@ -81,6 +82,10 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
                     mAdapter.setSelectedPosition(i);
                     scrollToShowItem(i);
                 }
+            } else if (intent.getAction().equals(MarsImagesApp.LOCATIONS_LOADED)) {
+                ImageListActivity activity = (ImageListActivity) getActivity();
+                MarsImagesApp.enableMenuItem(activity.mMosaicMenuItem);
+                MarsImagesApp.enableMenuItem(activity.mMapMenuItem);
             }
         }
     };
