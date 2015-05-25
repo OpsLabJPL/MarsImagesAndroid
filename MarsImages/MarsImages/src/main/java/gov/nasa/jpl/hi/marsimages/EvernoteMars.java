@@ -130,7 +130,7 @@ public class EvernoteMars {
         }
 
         //find the RMC in locations closest to the RMC of the newest image
-        List<int[]> locations = MARS_IMAGES.getLocations();
+        List<int[]> locations = MARS_IMAGES.getLocations(MARS_IMAGES.getApplicationContext());
         int[] lastLocation = locations.get(locations.size()-1);
         int siteIndex = lastLocation[0];
         int driveIndex = lastLocation[1];

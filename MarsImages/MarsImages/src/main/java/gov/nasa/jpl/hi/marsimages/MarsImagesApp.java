@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.view.MenuItem;
 
 import com.google.common.collect.Maps;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
@@ -39,6 +40,7 @@ public class MarsImagesApp extends Application {
     public static final String NOTES_CLEARED = "notesCleared";
     public static final String MISSION_CHANGED = "missionChanged";
     public static final String IMAGE_SELECTED = "imageSelected";
+    public static final String LOCATIONS_LOADED = "locationsLoaded";
     public static final String IMAGE_INDEX = "imageIndex";
     public static final String SELECTION_SOURCE = "selectionSource";
     public static final String VIEW_PAGER_SOURCE = "viewPagerSource";
@@ -52,6 +54,7 @@ public class MarsImagesApp extends Application {
     private final Map<String, Rover> missions = Maps.newHashMap();
     private long pauseTimestamp;
     private List<int[]> locations; //lazily initialized
+    private boolean locationsDoneLoading = false;
 
     public MarsImagesApp() {
         MARS_IMAGES = this;
@@ -115,10 +118,48 @@ public class MarsImagesApp extends Application {
         return pauseTimestamp;
     }
 
-    public List<int[]> getLocations() {
+    public int[] getPreviousRMC(int[] rmc) {
+        int[] prevRMC = null, location = null;
+        int prevSite = rmc[0];
+        int prevDrive = rmc[1];
+        List<int[]> locations = getLocations(getApplicationContext());
+        for (int i = 0; i < locations.size(); i++) {
+            int[] anRMC = locations.get(i);
+            if (anRMC[0] == prevSite && anRMC[1] == prevDrive && i > 0) {
+                location = locations.get(i-1);
+                break;
+            }
+        }
+        if (location != null) {
+            prevRMC = new int[] {location[0], location[1]};
+        }
+        return prevRMC;
+    }
+
+    public int[] getNextRMC(int[] rmc) {
+        int[] nextRMC = null, location = null;
+        int nextSite = rmc[0];
+        int nextDrive = rmc[1];
+        List<int[]> locations = getLocations(getApplicationContext());
+        for (int i = 0; i < locations.size(); i++) {
+            int[] anRMC = locations.get(i);
+            if (anRMC[0] == nextSite && anRMC[1] == nextDrive && i < locations.size()-1) {
+                location = locations.get(i+1);
+                break;
+            }
+        }
+        if (location != null) {
+            nextRMC = new int[] {location[0], location[1]};
+        }
+
+        return nextRMC;
+    }
+
+    public List<int[]> getLocations(Context context) {
 
         if (locations != null) return locations;
 
+        locationsDoneLoading = false;
         String urlPrefix = getMission().getURLPrefix();
         URL locationsURL = null;
         try {
@@ -134,6 +175,9 @@ public class MarsImagesApp extends Application {
                     final int driveIndex = Integer.parseInt(record.get(1));
                     locations.add(new int[] {siteIndex, driveIndex});
                 }
+                Intent intent = new Intent(LOCATIONS_LOADED);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+
             } finally {
                 parser.close();
                 reader.close();
@@ -146,8 +190,27 @@ public class MarsImagesApp extends Application {
             locations = Collections.EMPTY_LIST;
         }
 
+        locationsDoneLoading = true;
         return locations;
     }
 
+    public void reloadLocations() {
+        locations = null;
+        getLocations(getApplicationContext());
+    }
+
+    public boolean hasLocations() {
+        return locationsDoneLoading;
+    }
+
+    public static void disableMenuItem(MenuItem menuItem) {
+        menuItem.setEnabled(false);
+        menuItem.getIcon().setAlpha(130);
+    }
+
+    public static void enableMenuItem(MenuItem menuItem) {
+        menuItem.setEnabled(true);
+        menuItem.getIcon().setAlpha(255);
+    }
 }
 

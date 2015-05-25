@@ -174,10 +174,10 @@ public class RajawaliFragment extends Fragment
     
     @Override
 	public void onDestroy() {
-        super.onDestroy();
     	//mRajRenderer.onSurfaceDestroyed();
         unbindDrawables(mLayout);
         System.gc();
+		super.onDestroy();
     }
     
     private void unbindDrawables(View view) {

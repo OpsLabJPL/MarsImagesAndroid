@@ -35,19 +35,20 @@ public class Frustum {
 		}
 	}
 
-	public void update(float[] inverseProjectionView) {             
+	public void update(float[] m) {
+		planes[0].setAll(m[12] - m[0], m[13] - m[1], m[14] - m[2], m[15] - m[3]);
+		planes[1].setAll(m[12] + m[0], m[13] + m[1], m[14] + m[2], m[15] + m[3]);
+		planes[2].setAll(m[12] + m[4], m[13] + m[5], m[14] + m[6], m[15] + m[7]);
+		planes[3].setAll(m[12] - m[4], m[13] - m[5], m[14] - m[6], m[15] - m[7]);
+		planes[4].setAll(m[12] - m[8], m[13] - m[9], m[14] - m[10], m[15] - m[11]);
+		planes[5].setAll(m[12] + m[8], m[13] + m[9], m[14] + m[10], m[15] + m[11]);
 
-		for(int i = 0; i < 8; i++) {
-			planePoints[i].setAllFrom(mClipSpacePlanePoints[i]);
-			planePoints[i].project(inverseProjectionView);                    
-		}
-
-		planes[0].set(planePoints[1], planePoints[0], planePoints[2]);
-		planes[1].set(planePoints[4], planePoints[5], planePoints[7]);
-		planes[2].set(planePoints[0], planePoints[4], planePoints[3]);
-		planes[3].set(planePoints[5], planePoints[1], planePoints[6]);
-		planes[4].set(planePoints[2], planePoints[3], planePoints[6]);
-		planes[5].set(planePoints[4], planePoints[0], planePoints[1]);
+//		planes[0].normalize();
+//		planes[1].normalize();
+//		planes[2].normalize();
+//		planes[3].normalize();
+//		planes[4].normalize();
+//		planes[5].normalize();
 	}       
 
 
@@ -58,18 +59,23 @@ public class Frustum {
 		return true;
 	}
 
-	public boolean boundsInFrustum (BoundingBox bounds) {
-		Number3D[] corners = mTmp;
-		bounds.copyPoints(mTmp);//copy transformed points and test
-		int isout;
-		for (int i = 0; i < 6; i++) {
-			isout= 0;
-			for (int j = 0; j < 8; j++)
-				if (planes[i].getPointSide(corners[j]) == PlaneSide.Back){ isout++; }
+	Number3D mPoint1 = new Number3D(), mPoint2 = new Number3D();
 
-			if (isout == 8) { 
+	public boolean boundsInFrustum (BoundingBox bounds) {
+		for(int i=0; i<6; i++) {
+			Plane p = planes[i];
+			mPoint1.x = p.getNormal().x > 0 ? bounds.getMin().x : bounds.getMax().x;
+			mPoint2.x = p.getNormal().x > 0 ? bounds.getMax().x : bounds.getMin().x;
+			mPoint1.y = p.getNormal().y > 0 ? bounds.getMin().y : bounds.getMax().y;
+			mPoint2.y = p.getNormal().y > 0 ? bounds.getMax().y : bounds.getMin().y;
+			mPoint1.z = p.getNormal().z > 0 ? bounds.getMin().z : bounds.getMax().z;
+			mPoint2.z = p.getNormal().z > 0 ? bounds.getMax().z : bounds.getMin().z;
+
+			double distance1 = p.distance(mPoint1);
+			double distance2 = p.distance(mPoint2);
+
+			if ( distance1 < 0 && distance2 < 0 )
 				return false;
-			}
 		}
 
 		return true;
