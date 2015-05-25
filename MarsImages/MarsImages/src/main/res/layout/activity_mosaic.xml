@@ -3,6 +3,12 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     tools:context="gov.nasa.jpl.hi.marsimages.ui.MosaicActivity" tools:ignore="MergeRootFrame" >
 
+    <fragment
+        android:name="gov.nasa.jpl.hi.marsimages.ui.MarsRajawaliFragment"
+        android:id="@+id/mosaicFragment"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -11,4 +17,5 @@
         android:id="@+id/captionTextView"
         android:layout_gravity="center_horizontal|bottom"
         android:gravity="center" />
+
 </FrameLayout>
