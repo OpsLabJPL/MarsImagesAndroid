@@ -87,6 +87,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private double deviceAzimuth = 0;
     private double devicePitch = 0;
     private Plane plane;
+    private boolean mScaleChanged = false;
 
     public MarsMosaicRenderer(Context context) {
         super(context);
@@ -129,7 +130,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         super.onDrawFrame(glUnused);
     }
 
-    public void setScaleFactor(float scale) { mScaleFactor = scale; }
+    public void setScaleFactor(float scale) { mScaleFactor = scale; mScaleChanged = true; }
 
     public void addImagesToScene(int[] rmc) {
         this.rmc = rmc;
@@ -140,6 +141,12 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         qLL = mission.localLevelQuaternion(site_index, drive_index);
         EVERNOTE.setSearchWords(String.format("RMC %06d-%06d", site_index, drive_index), mContext);
         EVERNOTE.reloadNotes(mContext); //rely on the resultant note load end broadcast receiver to populate images in the scene
+    }
+
+    @Override
+    protected void destroyScene() {
+        deleteImages();
+        super.destroyScene();
     }
 
     public void toggleGyro() {
@@ -168,6 +175,9 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                 notesInScene.clear();
                 imagesLoading.clear();
                 photoQuads.clear();
+                for (TextureInfo textureInfo : photoTextures.values()) {
+                    mTextureManager.removeTexture(textureInfo);
+                }
                 photoTextures.clear();
                 clearChildren();
                 addChild(plane);
@@ -186,8 +196,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         for (String title: photoQuads.keySet()) {
             ImageQuad imageQuad = photoQuads.get(title);
 
-
-
 //            if (!mCamera.mFrustum.sphereInFrustum(imageQuad.getBoundsCenter(), (float)imageQuad.getBoundsRadius())) { //This doesn't work. Bad on them.
 
             if (!imageQuad.cameraIsLookingAtMe(getCamera())) {
@@ -195,15 +203,21 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                 for (TextureInfo textureInfo : imageQuad.getTextureInfoList())
                     imageQuad.removeTexture(textureInfo);
                 imageQuad.getTextureInfoList().clear();
-                photoTextures.remove(title);
+                TextureInfo textureInfo = photoTextures.remove(title);
+                if (textureInfo != null) {
+                    mTextureManager.removeTexture(textureInfo);
+                }
                 imagesLoading.remove(title);
                 continue;
             }
 
             if (imageQuad.getTextureInfoList().size() == 0)
                 prepareImageQuad(imageQuad, title);
+//            else if (mScaleChanged) //this is messed up. synchronization problems galore.
+//                synchronized (this) { loadImageAndTexture(title); }
         }
-        Log.d(TAG, "images skipped: "+skippedImages);
+        mScaleChanged = false;
+//        Log.d(TAG, "images skipped: "+skippedImages);
     }
 
     private void prepareImageQuad(ImageQuad imageQuad, String title) {
@@ -229,13 +243,13 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             return;
         }
 
-        //TODO get the image size right
         Boolean isLoading = imagesLoading.get(title);
         if (isLoading == null || isLoading == false) {
             imagesLoading.put(title, true);
             ImageLoader.getInstance().resume(); //in case the image loader engine is currently paused
             final String uri = EVERNOTE.getUri(photo.getResources().get(0));
-            ImageLoader.getInstance().loadImage(uri, new ImageSize(512, 512), new SimpleImageLoadingListener() {
+            final int bestResolution = computeBestTextureResolution(photo);
+            ImageLoader.getInstance().loadImage(uri, new ImageSize(bestResolution, bestResolution), new SimpleImageLoadingListener() {
                 @Override
                 public void onLoadingComplete(String imageUri, View view, final Bitmap loadedImage) {
 
@@ -244,12 +258,18 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
                     int width = loadedImage.getWidth();
                     int height = loadedImage.getHeight();
-                    Log.d(TAG, "Loaded image size: "+ width +"x"+ height +" for image " + uri);
-                    final Bitmap texture = (width != 512 || height != 512) ? Bitmap.createScaledBitmap(loadedImage, 512, 512, true) : loadedImage;
+                    Log.d(TAG, "Loaded image size: "+ width +"x"+ height +" for image " + title);
+                    final Bitmap texture = (width != bestResolution || height != bestResolution) ?
+                            Bitmap.createScaledBitmap(loadedImage, bestResolution, bestResolution, true) : loadedImage;
                     mSurfaceView.queueEvent(new Runnable() {
                         @Override
                         public void run() {
-                            TextureInfo textureInfo = mTextureManager.addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
+                            TextureInfo textureInfo = photoTextures.remove(title);
+                            if (textureInfo != null) {
+                                mTextureManager.removeTexture(textureInfo);
+                            }
+
+                            textureInfo = mTextureManager.addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
                             photoTextures.put(title, textureInfo);
                             imagesLoading.put(title, false);
                         }
@@ -307,6 +327,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                                 String imageId = MARS_IMAGES.getMission().getImageID(photo.getResources().get(0));
                                 quadInitializers.add(new QuadInitializer(model, imageId, photoTitle));
                             }
+
                             return quadInitializers;
                         }
 
@@ -358,6 +379,26 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             }
         }
     };
+
+    private int computeBestTextureResolution(Note photoNote) {
+//        CGFloat screenWidthPixels = ((GLKView*)_viewController.view).drawableWidth;
+//        float viewportFovRadians = [(MosaicViewController*)_viewController computeFOVRadians];
+//        float cameraFovRadians = [imageQuad cameraFOVRadians];
+//        float idealPixelResolution = screenWidthPixels * cameraFovRadians / viewportFovRadians;
+//        int bestTextureResolution = [Math floorPowerOfTwo:idealPixelResolution];
+//        return bestTextureResolution > 1024 ? 1024: bestTextureResolution;
+
+        int screenWidthPixels = mSurfaceView.getWidth();
+        double viewportFovRadians = Math.toRadians(NOMINAL_FOV / mScaleFactor);
+        Log.d(TAG, "viewport FOV:" + Math.toDegrees(viewportFovRadians));
+        String imageId = MARS_IMAGES.getMission().getImageID(photoNote.getResources().get(0));
+        String cameraId = MARS_IMAGES.getMission().getCameraId(imageId);
+        double cameraFovRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
+        double idealPixelResolution = screenWidthPixels * cameraFovRadians / viewportFovRadians;
+        int bestTextureResolution = M.floorPowerOfTwo(idealPixelResolution);
+        Log.d(TAG, "best texture resolution: "+bestTextureResolution);
+        return bestTextureResolution;
+    }
 
     private void setCameraLookDirection() {
         if (!gyroEnabled) {
