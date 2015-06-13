@@ -1,16 +1,26 @@
 package gov.nasa.jpl.hi.marsimages.models;
 
-import gov.nasa.jpl.hi.marsimages.EvernoteMars;
-import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
-import gov.nasa.jpl.hi.marsimages.rovers.Rover;
-import rajawali.Camera;
-import rajawali.Frustum;
-import rajawali.bounds.BoundingSphere;
-import rajawali.math.Number3D;
-import rajawali.math.Quaternion;
-import rajawali.primitives.Sphere;
+import android.graphics.Bitmap;
+import android.util.Log;
+import android.view.View;
 
+import com.evernote.edam.type.Note;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.assist.ImageSize;
+import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
+
+import gov.nasa.jpl.hi.marsimages.rovers.Rover;
+import gov.nasa.jpl.hi.marsimages.ui.MarsMosaicRenderer;
+import rajawali.Camera;
+import rajawali.materials.SimpleMaterial;
+import rajawali.materials.TextureInfo;
+import rajawali.materials.TextureManager;
+import rajawali.math.Number3D;
+
+import static android.opengl.GLES20.GL_TRIANGLE_FAN;
+import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
+import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 
 /**
  * Created by mpowell on 4/5/15.
@@ -28,11 +38,18 @@ public class ImageQuad extends Quad {
     private final float[] center = new float[3];
     private final Number3D mBoundsCenter;
 
+    private boolean isLoading = false;
+    private boolean cancelLoadingRequest = false;
+    private int originallyRequestedResolution = 0;
+    private Model model;
+
     static final float textureCoords[] = {0.f, 0.f, 0.f, 1.f, 1.f, 0.f, 1.f, 1.f};
+    public TextureInfo textureToAdd = null;
 
     public ImageQuad(Model model, double[] qLL, String imageID) {
         super();
         this.imageId = imageID;
+        this.model = model;
         String cameraId = MARS_IMAGES.getMission().getCameraId(imageID);
         this.cameraId = cameraId;
         int layer = 5 + MARS_IMAGES.getMission().getLayer(cameraId, imageID);
@@ -183,7 +200,96 @@ public class ImageQuad extends Quad {
         sphereVector.normalize();
         double angleBetweenRadians = Math.acos(Number3D.dot(cameraPointing, sphereVector));
         double cameraFOVRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
-        return angleBetweenRadians - Math.toRadians(camera.getFieldOfView())*.7071 - cameraFOVRadians*.7071 <= 0;
+        return angleBetweenRadians - Math.toRadians(camera.getFieldOfView()) - cameraFOVRadians <= 0;
     }
 
+    public void loadImageAndTexture(final Note photo, final String title, final int resolution, final MarsMosaicRenderer renderer) {
+        if (photo == null) {
+//            Log.w(TAG, "No photo in scene with title " + title);
+            return;
+        }
+
+        synchronized (this) {
+            cancelLoadingRequest = false;
+            if (isLoading) {
+                return;
+            }
+            isLoading = true;
+            final int bestTextureResolution = computeBestTextureResolution(resolution);
+//            Log.d(TAG, "Best texture resolution: "+bestTextureResolution);
+            originallyRequestedResolution = bestTextureResolution;
+        }
+
+        ImageLoader.getInstance().resume(); //in case the image loader engine is currently paused
+        final String uri = EVERNOTE.getUri(photo.getResources().get(0));
+        ImageLoader.getInstance().loadImage(uri, new ImageSize(originallyRequestedResolution, originallyRequestedResolution), new SimpleImageLoadingListener() {
+            @Override
+            public void onLoadingComplete(String imageUri, View view, final Bitmap loadedImage) {
+
+                //if this image is no longer in the viewport, early out
+                synchronized (ImageQuad.this) {
+                    if (!isLoading) {
+                        return;
+                    }
+
+                    if (cancelLoadingRequest) {
+                        isLoading = false;
+                        cancelLoadingRequest = false;
+                        return;
+                    }
+
+                    int width = loadedImage.getWidth();
+                    int height = loadedImage.getHeight();
+
+//                    Log.d(TAG, "Loaded image size: " + width + "x" + height + " for image " + title);
+                    final Bitmap texture = (width != originallyRequestedResolution || height != originallyRequestedResolution) ?
+                            Bitmap.createScaledBitmap(loadedImage, originallyRequestedResolution, originallyRequestedResolution, true) : loadedImage;
+                    if (!isLoading) return;
+
+                    int bestTextureResolution = computeBestTextureResolution(resolution);
+                    if (bestTextureResolution != originallyRequestedResolution) {
+                        isLoading = false;
+                        return;
+                    }
+
+                    renderer.getTextureManager().removeTextures(getTextureInfoList());
+                    for (TextureInfo textureInfo : getTextureInfoList())
+                        removeTexture(textureInfo);
+                    getTextureInfoList().clear();
+
+                    renderer.getSurfaceView().queueEvent(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            final TextureInfo textureInfo = renderer.getTextureManager().addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
+                            Runnable runnableForGL = new Runnable() {
+                                @Override
+                                public void run() {
+                                    synchronized (ImageQuad.this) {
+                                        setDrawingMode(GL_TRIANGLE_FAN);
+                                        setMaterial(new SimpleMaterial());
+                                        addTexture(textureInfo);
+                                        isLoading = false;
+                                    }
+                                }
+                            };
+                            renderer.glRunnables.add(runnableForGL);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private int computeBestTextureResolution(int resolution) {
+        int largestImageDimension = (int)Math.max(model.xdim(), model.ydim());
+        int bestImageResolution = Math.min(largestImageDimension, resolution);
+        return M.floorPowerOfTwo(bestImageResolution);
+    }
+
+    public void stopLoading() {
+        synchronized (this) {
+            cancelLoadingRequest = true;
+        }
+    }
 }

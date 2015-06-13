@@ -10,12 +10,8 @@ import android.opengl.GLES20;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.view.View;
 
 import com.evernote.edam.type.Note;
-import com.nostra13.universalimageloader.core.ImageLoader;
-import com.nostra13.universalimageloader.core.assist.ImageSize;
-import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 import com.powellware.marsimages.R;
 
 import org.json.JSONArray;
@@ -25,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.microedition.khronos.opengles.GL10;
 
@@ -45,7 +42,6 @@ import rajawali.primitives.Plane;
 import rajawali.renderer.RajawaliRenderer;
 
 import static android.opengl.GLES20.GL_LINE_LOOP;
-import static android.opengl.GLES20.GL_TRIANGLE_FAN;
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
@@ -69,7 +65,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private int[] rmc;
     private double[] qLL;
     private Map<String, Note> notesInScene = new ConcurrentHashMap<>();
-    private Map<String, Boolean> imagesLoading = new ConcurrentHashMap<>();
     private float mScaleFactor = 1f;
     private float cameraRelativeXMotion = 0f;
     private float cameraRelativeYMotion = 0f;
@@ -77,7 +72,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private DiffuseMaterial yellowMaterial;
     private Quad mCompass;
     private Map<String, ImageQuad> photoQuads = new ConcurrentHashMap<>();
-    private Map<String, TextureInfo> photoTextures = new ConcurrentHashMap<>();
     private double[] forwardVector = {0, 0, -1};
     private double rotAz[] = new double[4], rotEl[] = new double[4];
     private double look1[] = new double[3], look2[] = new double[3];
@@ -88,6 +82,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private double devicePitch = 0;
     private Plane plane;
     private boolean mScaleChanged = false;
+
+    public ConcurrentLinkedQueue<Runnable> glRunnables = new ConcurrentLinkedQueue<Runnable>();
 
     public MarsMosaicRenderer(Context context) {
         super(context);
@@ -124,6 +120,13 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         mCamera.setNearPlane(NEAR_PLANE);
         mCamera.setProjectionMatrix(mSurfaceView.getWidth(), mSurfaceView.getHeight());
 
+        Runnable task = glRunnables.poll();
+        int runnableCount = 0;
+        while (task != null && runnableCount < 5) {
+            runnableCount++;
+            task.run();
+            task = glRunnables.poll();
+        }
         //update imagequads to use image texture or line mode depending on visibility and if the image is loaded yet into memory
         prepareImageQuads();
 
@@ -173,12 +176,10 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             @Override
             public void run() {
                 notesInScene.clear();
-                imagesLoading.clear();
-                photoQuads.clear();
-                for (TextureInfo textureInfo : photoTextures.values()) {
-                    mTextureManager.removeTexture(textureInfo);
+                for (ImageQuad photoQuad : photoQuads.values()) {
+                    mTextureManager.removeTextures(photoQuad.getTextureInfoList());
                 }
-                photoTextures.clear();
+                photoQuads.clear();
                 clearChildren();
                 addChild(plane);
             }
@@ -200,92 +201,27 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
             if (!imageQuad.cameraIsLookingAtMe(getCamera())) {
                 skippedImages++;
+                imageQuad.stopLoading();
+                mTextureManager.removeTextures(imageQuad.getTextureInfoList());
                 for (TextureInfo textureInfo : imageQuad.getTextureInfoList())
                     imageQuad.removeTexture(textureInfo);
                 imageQuad.getTextureInfoList().clear();
-                TextureInfo textureInfo = photoTextures.remove(title);
-                if (textureInfo != null) {
-                    mTextureManager.removeTexture(textureInfo);
-                }
-                imagesLoading.remove(title);
                 continue;
             }
 
-            if (imageQuad.getTextureInfoList().size() == 0)
+            if (imageQuad.getTextureInfoList().size() == 0 || mScaleChanged) {
                 prepareImageQuad(imageQuad, title);
-//            else if (mScaleChanged) //this is messed up. synchronization problems galore.
-//                synchronized (this) { loadImageAndTexture(title); }
+            }
         }
         mScaleChanged = false;
 //        Log.d(TAG, "images skipped: "+skippedImages);
     }
 
     private void prepareImageQuad(ImageQuad imageQuad, String title) {
-        TextureInfo textureInfo = photoTextures.get(title);
-        if (textureInfo != null) {
-            if (!imageQuad.getTextureInfoList().contains(textureInfo)) {
-                imageQuad.setDrawingMode(GL_TRIANGLE_FAN);
-                imageQuad.setMaterial(new SimpleMaterial());
-                imageQuad.addTexture(textureInfo);
-            }
+        if (imageQuad.getTextureInfoList().isEmpty()) {
+            Note photo = notesInScene.get(title);
+            imageQuad.loadImageAndTexture(photo, title, computeIdealImageResolution(photo), this);
         }
-        else {
-            synchronized (this){
-                loadImageAndTexture(title);
-            }
-        }
-    }
-
-     private void loadImageAndTexture(final String title) {
-        final Note photo = notesInScene.get(title);
-        if (photo == null) {
-            Log.w(TAG, "No photo in scene with title "+title);
-            return;
-        }
-
-        Boolean isLoading = imagesLoading.get(title);
-        if (isLoading == null || isLoading == false) {
-            imagesLoading.put(title, true);
-            ImageLoader.getInstance().resume(); //in case the image loader engine is currently paused
-            final String uri = EVERNOTE.getUri(photo.getResources().get(0));
-            final int bestResolution = computeBestTextureResolution(photo);
-            ImageLoader.getInstance().loadImage(uri, new ImageSize(bestResolution, bestResolution), new SimpleImageLoadingListener() {
-                @Override
-                public void onLoadingComplete(String imageUri, View view, final Bitmap loadedImage) {
-
-                    //if this image is no longer in the scene, early out
-                    if (!imagesLoading.containsKey(title)) return;
-
-                    int width = loadedImage.getWidth();
-                    int height = loadedImage.getHeight();
-                    Log.d(TAG, "Loaded image size: "+ width +"x"+ height +" for image " + title);
-                    final Bitmap texture = (width != bestResolution || height != bestResolution) ?
-                            Bitmap.createScaledBitmap(loadedImage, bestResolution, bestResolution, true) : loadedImage;
-                    mSurfaceView.queueEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            TextureInfo textureInfo = photoTextures.remove(title);
-                            if (textureInfo != null) {
-                                mTextureManager.removeTexture(textureInfo);
-                            }
-
-                            textureInfo = mTextureManager.addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
-                            photoTextures.put(title, textureInfo);
-                            imagesLoading.put(title, false);
-                        }
-                    });
-                }
-            });
-        }
-//        UIImage* image = [photo underlyingImage];
-//        if (!image) {
-//            if (!photo.isLoading) {
-//                [photo performLoadUnderlyingImageAndNotify];
-//            }
-//        } else {
-//            [self makeTexture:image withTitle:title grayscale:[photo isGrayscale]];
-//            [photo unloadUnderlyingImage]; //improves memory management quite significantly
-//        }
     }
 
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -380,24 +316,16 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         }
     };
 
-    private int computeBestTextureResolution(Note photoNote) {
-//        CGFloat screenWidthPixels = ((GLKView*)_viewController.view).drawableWidth;
-//        float viewportFovRadians = [(MosaicViewController*)_viewController computeFOVRadians];
-//        float cameraFovRadians = [imageQuad cameraFOVRadians];
-//        float idealPixelResolution = screenWidthPixels * cameraFovRadians / viewportFovRadians;
-//        int bestTextureResolution = [Math floorPowerOfTwo:idealPixelResolution];
-//        return bestTextureResolution > 1024 ? 1024: bestTextureResolution;
-
+    private int computeIdealImageResolution(Note photoNote) {
         int screenWidthPixels = mSurfaceView.getWidth();
         double viewportFovRadians = Math.toRadians(NOMINAL_FOV / mScaleFactor);
-        Log.d(TAG, "viewport FOV:" + Math.toDegrees(viewportFovRadians));
+//        Log.d(TAG, "viewport FOV:" + Math.toDegrees(viewportFovRadians));
         String imageId = MARS_IMAGES.getMission().getImageID(photoNote.getResources().get(0));
         String cameraId = MARS_IMAGES.getMission().getCameraId(imageId);
         double cameraFovRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
-        double idealPixelResolution = screenWidthPixels * cameraFovRadians / viewportFovRadians;
-        int bestTextureResolution = M.floorPowerOfTwo(idealPixelResolution);
-        Log.d(TAG, "best texture resolution: "+bestTextureResolution);
-        return bestTextureResolution;
+        int idealPixelResolution = (int)Math.floor(screenWidthPixels * cameraFovRadians / viewportFovRadians);
+//        Log.d(TAG, "Ideal pixel resolution: "+idealPixelResolution);
+        return idealPixelResolution;
     }
 
     private void setCameraLookDirection() {
