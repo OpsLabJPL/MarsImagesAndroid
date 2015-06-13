@@ -6,6 +6,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -24,6 +25,8 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
 
     public static final float MIN_ZOOM = 0.5f;
     public static final float MAX_ZOOM = 5.0f;
+    private static final String TAG = "MarsRajawaliFragment";
+    private static final int INVALID_POINTER_ID = -1;
 
     private MarsMosaicRenderer renderer;
     private float mScaleFactor = 1.0f;
@@ -37,6 +40,7 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
     float[] mGravity;
     float[] mGeomagnetic;
     private ScaleGestureDetector mScaleDetector;
+    private int mActivePointerId;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -72,28 +76,31 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
     }
 
     @Override
-    public boolean onTouch(View v, MotionEvent e) {
+    public boolean onTouch(View v, MotionEvent ev) {
         // MotionEvent reports input details from the touch screen
         // and other input controls. In this case, you are only
         // interested in events where the touch position changed.
 
         // Let the ScaleGestureDetector inspect all events.
-        mScaleDetector.onTouchEvent(e);
+        mScaleDetector.onTouchEvent(ev);
 
-        float x = e.getX();
-        float y = e.getY();
 
-        switch (e.getAction() & MotionEvent.ACTION_MASK) {
+        switch (ev.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
-                mPreviousX = e.getX();
-                mPreviousY = e.getY();
+                mPreviousX = ev.getX();
+                mPreviousY = ev.getY();
+                mActivePointerId = ev.getPointerId(0);
                 break;
 
             case MotionEvent.ACTION_MOVE:
-                float xMovement = x - mPreviousX;
-                float yMovement = y - mPreviousY;
-                renderer.incrementCameraMotion(xMovement, yMovement);
-
+                int pointerIndex = ev.findPointerIndex(mActivePointerId);
+                float x = ev.getX(pointerIndex);
+                float y = ev.getY(pointerIndex);
+                if (!mScaleDetector.isInProgress()) {
+                    float xMovement = (x - mPreviousX) / mScaleFactor;
+                    float yMovement = (y - mPreviousY) / mScaleFactor;
+                    renderer.incrementCameraMotion(xMovement, yMovement);
+                }
                 mPreviousX = x;
                 mPreviousY = y;
                 break;
@@ -101,6 +108,25 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
             case MotionEvent.ACTION_UP:
                 mPreviousX = 0f;
                 mPreviousY = 0f;
+                mActivePointerId = INVALID_POINTER_ID;
+                break;
+
+            case MotionEvent.ACTION_CANCEL:
+                mActivePointerId = INVALID_POINTER_ID;
+                break;
+
+            case MotionEvent.ACTION_POINTER_UP:
+                pointerIndex = (ev.getAction() & MotionEvent.ACTION_POINTER_INDEX_MASK)
+                        >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
+                final int pointerId = ev.getPointerId(pointerIndex);
+                if (pointerId == mActivePointerId) {
+                    // This was our active pointer going up. Choose a new
+                    // active pointer and adjust accordingly.
+                    final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
+                    mPreviousX = ev.getX(newPointerIndex);
+                    mPreviousY = ev.getY(newPointerIndex);
+                    mActivePointerId = ev.getPointerId(newPointerIndex);
+                }
                 break;
         }
         return true;
