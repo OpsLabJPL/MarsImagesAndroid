@@ -127,6 +127,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             task.run();
             task = glRunnables.poll();
         }
+        if (task != null) task.run();
+
         //update imagequads to use image texture or line mode depending on visibility and if the image is loaded yet into memory
         prepareImageQuads();
 
@@ -189,6 +191,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private void prepareImageQuads() {
 
         int skippedImages = 0;
+        int drawnImages = 0;
 
         float[] viewMatrix = mCamera.getViewMatrix();
         float[] projectionMatrix = mCamera.getProjectionMatrix();
@@ -201,6 +204,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
             if (!imageQuad.cameraIsLookingAtMe(getCamera())) {
                 skippedImages++;
+                imageQuad.setVisible(false);
                 imageQuad.stopLoading();
                 mTextureManager.removeTextures(imageQuad.getTextureInfoList());
                 for (TextureInfo textureInfo : imageQuad.getTextureInfoList())
@@ -208,20 +212,23 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                 imageQuad.getTextureInfoList().clear();
                 continue;
             }
-
+            imageQuad.setVisible(true);
+            drawnImages++;
             if (imageQuad.getTextureInfoList().size() == 0 || mScaleChanged) {
+                Log.d(TAG, "No texture for "+title+ " isLoading: "+imageQuad.isLoading());
                 prepareImageQuad(imageQuad, title);
             }
         }
         mScaleChanged = false;
 //        Log.d(TAG, "images skipped: "+skippedImages);
+//        Log.d(TAG, "images drawn: "+drawnImages);
     }
 
     private void prepareImageQuad(ImageQuad imageQuad, String title) {
-        if (imageQuad.getTextureInfoList().isEmpty()) {
+//        if (imageQuad.getTextureInfoList().isEmpty()) {
             Note photo = notesInScene.get(title);
             imageQuad.loadImageAndTexture(photo, title, computeIdealImageResolution(photo), this);
-        }
+//        }
     }
 
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -299,7 +306,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                     continue;
 
                 double[] v2 = CameraModel.pointingVector(rover.modelJson(prospectiveImage));
-                double angleThreshold = rover.fieldOfView(prospectiveImage)/10; //less overlap than ~5 degrees for Mastcam is problem for memory: see 42-852 looking south for example
+                double angleThreshold = rover.fieldOfView(prospectiveImage)/20; //less overlap than ~5 degrees for Mastcam is problem for memory: see 42-852 looking south for example
                 boolean tooCloseToAnotherImage = false;
                 for (String title : notesInScene.keySet()) {
                     Note image = notesInScene.get(title);
@@ -323,7 +330,11 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         String imageId = MARS_IMAGES.getMission().getImageID(photoNote.getResources().get(0));
         String cameraId = MARS_IMAGES.getMission().getCameraId(imageId);
         double cameraFovRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
+
         int idealPixelResolution = (int)Math.floor(screenWidthPixels * cameraFovRadians / viewportFovRadians);
+
+        //as much as it pains the scientist in me, cut down the MMM image resolution by half. There're just too darn many of them.
+        if (cameraId.charAt(0)=='M') idealPixelResolution /= 2;
 //        Log.d(TAG, "Ideal pixel resolution: "+idealPixelResolution);
         return idealPixelResolution;
     }

@@ -6,6 +6,7 @@ import android.view.View;
 
 import com.evernote.edam.type.Note;
 import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.assist.ImageSize;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
@@ -20,7 +21,6 @@ import rajawali.math.Number3D;
 import static android.opengl.GLES20.GL_TRIANGLE_FAN;
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.TAG;
 
 /**
  * Created by mpowell on 4/5/15.
@@ -30,6 +30,9 @@ public class ImageQuad extends Quad {
     static final double x_axis[] = {1,0,0};
     static final double z_axis[] = {0,0,1};
     static final int numberOfPositions = 4;
+    private static final String TAG = "ImageQuad";
+    private final Number3D sphereVector;
+    private final double roverCameraFOVRadians;
     private String cameraId = null;
     private final int layer;
 
@@ -38,7 +41,11 @@ public class ImageQuad extends Quad {
     private final float[] center = new float[3];
     private final Number3D mBoundsCenter;
 
-    private boolean isLoading = false;
+    public boolean isLoading() {
+        return loading;
+    }
+
+    private boolean loading = false;
     private boolean cancelLoadingRequest = false;
     private int originallyRequestedResolution = 0;
     private Model model;
@@ -52,6 +59,7 @@ public class ImageQuad extends Quad {
         this.model = model;
         String cameraId = MARS_IMAGES.getMission().getCameraId(imageID);
         this.cameraId = cameraId;
+        roverCameraFOVRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
         int layer = 5 + MARS_IMAGES.getMission().getLayer(cameraId, imageID);
         this.layer = layer;
 
@@ -69,7 +77,8 @@ public class ImageQuad extends Quad {
         center[1] = (v0[1]+v2[1])/2;
         center[2] = (v0[2]+v2[2])/2;
         mBoundsCenter = new Number3D(center[0], center[1], center[2]);
-
+        sphereVector = new Number3D(mBoundsCenter);
+        sphereVector.normalize();
         //assign to the radius the distance from the center to the farthest vertex
         double d0 = distanceBetween(center, v0);
         double d1 = distanceBetween(center, v1);
@@ -93,7 +102,7 @@ public class ImageQuad extends Quad {
     private double cameraFOVRadians() {
         if (cameraId != null)
             return MARS_IMAGES.getMission().getCameraFOV(cameraId);
-        throw new IllegalStateException("cameraFOVRadians called before cameraId initialized");
+        throw new IllegalStateException("roverCameraFOVRadians called before cameraId initialized");
     }
 
     private double distanceBetween(float[] pt1, float[] pt2) {
@@ -193,28 +202,28 @@ public class ImageQuad extends Quad {
         vertices[3][2] = (float)pfinal[2];
     }
 
-    public boolean cameraIsLookingAtMe(Camera camera) {
-        Number3D cameraPointing = new Number3D(camera.getLookAt());
-        cameraPointing.normalize();
-        Number3D sphereVector = new Number3D(mBoundsCenter);
-        sphereVector.normalize();
+    public boolean cameraIsLookingAtMe(Camera viewPortCamera) {
+        Number3D cameraPointing = viewPortCamera.getLookAt();
+
         double angleBetweenRadians = Math.acos(Number3D.dot(cameraPointing, sphereVector));
-        double cameraFOVRadians = MARS_IMAGES.getMission().getCameraFOV(cameraId);
-        return angleBetweenRadians - Math.toRadians(camera.getFieldOfView()) - cameraFOVRadians <= 0;
+
+//        return angleBetweenRadians - Math.toRadians(camera.getFieldOfView()) - roverCameraFOVRadians <= 0;
+        return angleBetweenRadians - roverCameraFOVRadians*.7071 < Math.toRadians(viewPortCamera.getFieldOfView())*.7071;
     }
+
 
     public void loadImageAndTexture(final Note photo, final String title, final int resolution, final MarsMosaicRenderer renderer) {
         if (photo == null) {
-//            Log.w(TAG, "No photo in scene with title " + title);
+            Log.e(TAG, "No photo in scene with title " + title);
             return;
         }
 
         synchronized (this) {
             cancelLoadingRequest = false;
-            if (isLoading) {
+            if (loading) {
                 return;
             }
-            isLoading = true;
+            loading = true;
             final int bestTextureResolution = computeBestTextureResolution(resolution);
 //            Log.d(TAG, "Best texture resolution: "+bestTextureResolution);
             originallyRequestedResolution = bestTextureResolution;
@@ -228,12 +237,12 @@ public class ImageQuad extends Quad {
 
                 //if this image is no longer in the viewport, early out
                 synchronized (ImageQuad.this) {
-                    if (!isLoading) {
+                    if (!loading) {
                         return;
                     }
 
                     if (cancelLoadingRequest) {
-                        isLoading = false;
+                        loading = false;
                         cancelLoadingRequest = false;
                         return;
                     }
@@ -241,17 +250,29 @@ public class ImageQuad extends Quad {
                     int width = loadedImage.getWidth();
                     int height = loadedImage.getHeight();
 
+                    if (!getTextureInfoList().isEmpty()) {
+                        int testWidth = width, testHeight = height;
+                        if (testWidth != originallyRequestedResolution || testHeight != originallyRequestedResolution) {
+                            testWidth = originallyRequestedResolution; testHeight = originallyRequestedResolution;
+                        }
+                        TextureInfo info = getTextureInfoList().get(0);
+                        if (testWidth == info.getWidth() || testHeight == info.getHeight()) {
+                            loading = false;
+                            return;
+                        }
+                    }
+
 //                    Log.d(TAG, "Loaded image size: " + width + "x" + height + " for image " + title);
                     final Bitmap texture = (width != originallyRequestedResolution || height != originallyRequestedResolution) ?
                             Bitmap.createScaledBitmap(loadedImage, originallyRequestedResolution, originallyRequestedResolution, true) : loadedImage;
-                    if (!isLoading) return;
+                    if (!loading) return;
 
                     int bestTextureResolution = computeBestTextureResolution(resolution);
                     if (bestTextureResolution != originallyRequestedResolution) {
-                        isLoading = false;
+                        Log.d(TAG, "Texture resolution mismatch: "+bestTextureResolution + " vs. "+originallyRequestedResolution);
+                        loading = false;
                         return;
                     }
-
                     renderer.getTextureManager().removeTextures(getTextureInfoList());
                     for (TextureInfo textureInfo : getTextureInfoList())
                         removeTexture(textureInfo);
@@ -262,15 +283,16 @@ public class ImageQuad extends Quad {
                         public void run() {
 
                             final TextureInfo textureInfo = renderer.getTextureManager().addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
+                            if (textureInfo == null || textureInfo.getTexture() == null) {
+                                Log.e(TAG, "Error generating texture for imageQuad "+title);
+                            }
                             Runnable runnableForGL = new Runnable() {
                                 @Override
                                 public void run() {
-                                    synchronized (ImageQuad.this) {
-                                        setDrawingMode(GL_TRIANGLE_FAN);
-                                        setMaterial(new SimpleMaterial());
-                                        addTexture(textureInfo);
-                                        isLoading = false;
-                                    }
+                                    setDrawingMode(GL_TRIANGLE_FAN);
+                                    setMaterial(new SimpleMaterial());
+                                    addTexture(textureInfo);
+                                    loading = false;
                                 }
                             };
                             renderer.glRunnables.add(runnableForGL);
@@ -278,12 +300,27 @@ public class ImageQuad extends Quad {
                     });
                 }
             }
+
+            @Override
+            public void onLoadingCancelled(String imageUri, View view) {
+                Log.e(TAG, "Loading cancelled for "+imageUri);
+                loading = false;
+                super.onLoadingCancelled(imageUri, view);
+            }
+
+            @Override
+            public void onLoadingFailed(String imageUri, View view, FailReason failReason) {
+                Log.e(TAG, "Loading failed for "+imageUri);
+                loading = false;
+                super.onLoadingFailed(imageUri, view, failReason);
+            }
         });
     }
 
     private int computeBestTextureResolution(int resolution) {
         int largestImageDimension = (int)Math.max(model.xdim(), model.ydim());
         int bestImageResolution = Math.min(largestImageDimension, resolution);
+        Log.d(TAG, "Texture res: " + M.floorPowerOfTwo(bestImageResolution));
         return M.floorPowerOfTwo(bestImageResolution);
     }
 

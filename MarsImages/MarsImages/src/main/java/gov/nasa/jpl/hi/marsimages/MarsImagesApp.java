@@ -4,6 +4,7 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.MenuItem;
@@ -73,6 +74,7 @@ public class MarsImagesApp extends Application {
         DisplayImageOptions defaultOptions = new DisplayImageOptions.Builder()
                 .cacheInMemory(true)
                 .cacheOnDisk(true)
+                .bitmapConfig(Bitmap.Config.RGB_565)
                 .build();
         ImageLoaderConfiguration config =
                 new ImageLoaderConfiguration.Builder(getApplicationContext())

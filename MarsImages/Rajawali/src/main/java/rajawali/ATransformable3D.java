@@ -248,4 +248,6 @@ public abstract class ATransformable3D {
 		}
 		setLookAt(lookAt.x,  lookAt.y, lookAt.z);
 	}
+
+
 }
