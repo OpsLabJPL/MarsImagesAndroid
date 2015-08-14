@@ -273,22 +273,20 @@ public class ImageQuad extends Quad {
                         loading = false;
                         return;
                     }
-                    renderer.getTextureManager().removeTextures(getTextureInfoList());
-                    for (TextureInfo textureInfo : getTextureInfoList())
-                        removeTexture(textureInfo);
-                    getTextureInfoList().clear();
 
                     renderer.getSurfaceView().queueEvent(new Runnable() {
                         @Override
                         public void run() {
 
-                            final TextureInfo textureInfo = renderer.getTextureManager().addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
-                            if (textureInfo == null || textureInfo.getTexture() == null) {
-                                Log.e(TAG, "Error generating texture for imageQuad "+title);
-                            }
                             Runnable runnableForGL = new Runnable() {
                                 @Override
                                 public void run() {
+                                    renderer.getTextureManager().removeTextures(getTextureInfoList());
+                                    for (TextureInfo textureInfo : getTextureInfoList())
+                                        removeTexture(textureInfo);
+                                    getTextureInfoList().clear();
+                                    final TextureInfo textureInfo = renderer.getTextureManager().addTexture(texture, TextureManager.TextureType.DIFFUSE, false, false);
+
                                     setDrawingMode(GL_TRIANGLE_FAN);
                                     setMaterial(new SimpleMaterial());
                                     addTexture(textureInfo);
@@ -320,7 +318,7 @@ public class ImageQuad extends Quad {
     private int computeBestTextureResolution(int resolution) {
         int largestImageDimension = (int)Math.max(model.xdim(), model.ydim());
         int bestImageResolution = Math.min(largestImageDimension, resolution);
-        Log.d(TAG, "Texture res: " + M.floorPowerOfTwo(bestImageResolution));
+//        Log.d(TAG, "Texture res: " + M.floorPowerOfTwo(bestImageResolution));
         return M.floorPowerOfTwo(bestImageResolution);
     }
 

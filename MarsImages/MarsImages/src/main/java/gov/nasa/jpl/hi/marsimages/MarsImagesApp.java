@@ -177,6 +177,7 @@ public class MarsImagesApp extends Application {
                     final int driveIndex = Integer.parseInt(record.get(1));
                     locations.add(new int[] {siteIndex, driveIndex});
                 }
+
                 Intent intent = new Intent(LOCATIONS_LOADED);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 

@@ -111,13 +111,17 @@ public abstract class Rover {
     public abstract String[] stereoForImages(Note note);
 
     public JSONArray modelJson(Note note) {
-        String cameraModelJson = note.getResources().get(0).getAttributes().getCameraModel();
-        if (cameraModelJson != null && cameraModelJson.length() > 0) {
-            try {
-                return new JSONArray(cameraModelJson);
-            } catch (JSONException e) {
-                Log.e(TAG, "Bad json in image note " + note.getTitle() + " " + e.getMessage());
+        try {
+            String cameraModelJson = note.getResources().get(0).getAttributes().getCameraModel();
+            if (cameraModelJson != null && cameraModelJson.length() > 0) {
+                try {
+                    return new JSONArray(cameraModelJson);
+                } catch (JSONException e) {
+                    Log.e(TAG, "Bad json in image note " + note.getTitle() + " " + e.getMessage());
+                }
             }
+        }catch (NullPointerException e) {
+            Log.e(TAG, "Null stuff "+ note + ", "+ note.getResources().size());
         }
         return null;
     }

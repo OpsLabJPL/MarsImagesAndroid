@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import gov.nasa.jpl.hi.marsimages.EvernoteMars;
@@ -84,6 +85,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private boolean mScaleChanged = false;
 
     public ConcurrentLinkedQueue<Runnable> glRunnables = new ConcurrentLinkedQueue<Runnable>();
+    private TextureInfo hoverCompassTextureInfo;
 
     public MarsMosaicRenderer(Context context) {
         super(context);
@@ -174,10 +176,10 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     }
 
     public void deleteImages() {
+        notesInScene.clear();
         mSurfaceView.queueEvent(new Runnable() {
             @Override
             public void run() {
-                notesInScene.clear();
                 for (ImageQuad photoQuad : photoQuads.values()) {
                     mTextureManager.removeTextures(photoQuad.getTextureInfoList());
                 }
@@ -215,7 +217,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             imageQuad.setVisible(true);
             drawnImages++;
             if (imageQuad.getTextureInfoList().size() == 0 || mScaleChanged) {
-                Log.d(TAG, "No texture for "+title+ " isLoading: "+imageQuad.isLoading());
+//                Log.d(TAG, "No texture for "+title+ " isLoading: "+imageQuad.isLoading());
                 prepareImageQuad(imageQuad, title);
             }
         }
@@ -240,7 +242,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
             if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 Integer notesReturned = intent.getIntExtra(EvernoteMars.NUM_NOTES_RETURNED, 0);
-                Log.d("mosaic receiver", "Notes returned: " + notesReturned);
+//                Log.d("mosaic receiver", "Notes returned: " + notesReturned);
 
 
                 if (notesReturned > 0) {
@@ -254,7 +256,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                                 return Collections.EMPTY_LIST; //we've already made the image quads
 
                             List<QuadInitializer> quadInitializers = new ArrayList<QuadInitializer>();
-                            Log.d(TAG, "Making image quads");
+//                            Log.d(TAG, "Making image quads");
                             List<Note> notes = EVERNOTE.getNotes();
                             binImagesByPointing(notes);
                             int mosaicCount = 0;
@@ -279,7 +281,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                             mSurfaceView.queueEvent(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Log.d(TAG, "Adding image quads to scene");
+//                                    Log.d(TAG, "Adding image quads to scene");
                                     for (QuadInitializer i : initializers) {
                                         ImageQuad quad = new ImageQuad(i.model, qLL, i.imageId);
                                         if (!hasChild(quad)) {
@@ -312,7 +314,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                     Note image = notesInScene.get(title);
                     double[] v1 = CameraModel.pointingVector(rover.modelJson(image));
                     if (CameraModel.angularDistance(v1, v2) < angleThreshold &&
-                        M.epsilonEquals(rover.fieldOfView(image), rover.fieldOfView(prospectiveImage))) {
+                            M.epsilonEquals(rover.fieldOfView(image), rover.fieldOfView(prospectiveImage))) {
                         tooCloseToAnotherImage = true;
                         break;
                     }
@@ -359,6 +361,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     }
 
     private void addHoverCompass() {
+        Log.d(TAG, "Adding hover compass...");
         int[] maxTextureSize = new int[1];
         GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
         Bitmap bg = null;
@@ -371,8 +374,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         plane.setPosition(0f,COMPASS_HEIGHT,0f);
         plane.setRotX(-90);
         plane.setMaterial(new SimpleMaterial(AMaterial.ALPHA_MASKING));
-        plane.addTexture(mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, true));
-        bg.recycle();
+        hoverCompassTextureInfo = mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, false);
+        plane.addTexture(hoverCompassTextureInfo);
         plane.addLight(mLight);
         addChild(plane);
     }

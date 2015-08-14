@@ -4,8 +4,10 @@ import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,6 +25,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.enableMenuItem;
 public class MosaicActivity extends AppCompatActivity {
 
     public static final String INTENT_ACTION_MOSAIC = "gov.nasa.jpl.hi.marsimages.MOSAIC";
+    private static final String TAG = "MosaicActivity";
     private MarsRajawaliFragment mosaicFragment;
     private MenuItem backMenuItem;
     private MenuItem forwardMenuItem;
@@ -61,23 +64,44 @@ public class MosaicActivity extends AppCompatActivity {
         else if (id == R.id.goBack) {
             scene.deleteImages();
 
-            int[] prevRMC = MARS_IMAGES.getPreviousRMC(scene.getRMC());
-            if (prevRMC != null) {
-                //load new image mosaic
-                scene.addImagesToScene(prevRMC);
-                updateLocationMenuItems();
-            }
+            new AsyncTask<Void, Void, Void>() {
+
+                @Override
+                protected Void doInBackground(Void... params) {
+                    int[] prevRMC = MARS_IMAGES.getPreviousRMC(scene.getRMC());
+                    if (prevRMC != null) {
+                        //load new image mosaic
+                        scene.addImagesToScene(prevRMC);
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void aVoid) {
+                    updateLocationMenuItems();
+                }
+            }.execute();
             return true;
         }
         else if (id == R.id.goForward) {
             scene.deleteImages();
-            int[] nextRMC = MARS_IMAGES.getNextRMC(scene.getRMC());
-            if (nextRMC != null) {
-                //load new image mosaic
-                scene.addImagesToScene(nextRMC);
-                updateLocationMenuItems();
-            }
 
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... params) {
+                    int[] nextRMC = MARS_IMAGES.getNextRMC(scene.getRMC());
+                    if (nextRMC != null) {
+                        //load new image mosaic
+                        scene.addImagesToScene(nextRMC);
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void aVoid) {
+                    updateLocationMenuItems();
+                }
+            }.execute();
             return true;
         }
 
