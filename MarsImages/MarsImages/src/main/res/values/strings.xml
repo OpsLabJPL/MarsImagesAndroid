@@ -15,7 +15,7 @@
     <string name="menu_share">Share</string>
     <string name="menu_save">Save</string>
     <string name="gallery_saved">The image has been saved to your gallery!</string>
-    <string name="share_subject">From Mars Images:</string>
+    <string name="share_subject">shared from Mars Images for Android</string>
     <string name="title_activity_image_list">ImageListActivity</string>
     <string name="drawer_open">Show Image List</string>
     <string name="drawer_close">Hide Image List</string>

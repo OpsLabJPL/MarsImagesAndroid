@@ -156,7 +156,7 @@ public class ImageViewPagerFragment extends Fragment {
 
     public void shareImage() {
         Note thisNote = EVERNOTE.getNote(mPager.getCurrentItem());
-        final String imageSubject = R.string.share_subject + thisNote.getTitle();
+        final String imageSubject = MARS_IMAGES.getMissionName()+" "+thisNote.getTitle()+" "+getString(R.string.share_subject);
         new AsyncTask<Object, Void, File>() {
             @Override
             protected File doInBackground(Object... params) {
@@ -231,8 +231,9 @@ public class ImageViewPagerFragment extends Fragment {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
         byte[] imageInByte = stream.toByteArray();
+        String filename = imageURL.substring(imageURL.lastIndexOf("/")+1);
         File jpegFile = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES), MARS_IMAGES.getMission().getSortableImageFilename(imageURL));
+                Environment.DIRECTORY_PICTURES), filename);
         try {
             FileOutputStream fos = new FileOutputStream(jpegFile);
             fos.write(imageInByte);
