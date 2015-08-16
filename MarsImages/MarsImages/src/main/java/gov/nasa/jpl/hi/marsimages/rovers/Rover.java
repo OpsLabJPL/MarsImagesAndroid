@@ -12,9 +12,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DateFormat;
@@ -153,16 +156,22 @@ public abstract class Rover {
             locationsURL = new URL(getURLPrefix() + "/locations/site_"+sixDigitSite+".csv");
             Log.d(TAG, "location url: %@" + locationsURL);
 
-            final Reader reader = new InputStreamReader(locationsURL.openStream());
-            final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+            HttpURLConnection urlConnection = (HttpURLConnection)locationsURL.openConnection();
             try {
-                for (final CSVRecord record : parser) {
-                    locations.add(record);
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                final Reader reader = new InputStreamReader(in);
+                final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+                try {
+                    for (final CSVRecord record : parser) {
+                        locations.add(record);
+                    }
+                    locationsBySite.put(siteIndex, locations);
+                } finally {
+                    parser.close();
+                    reader.close();
                 }
-                locationsBySite.put(siteIndex, locations);
             } finally {
-                parser.close();
-                reader.close();
+                urlConnection.disconnect();
             }
         } catch (MalformedURLException e) {
             Log.e(TAG, "Badly formatted URL for location manifest: " + locationsURL);

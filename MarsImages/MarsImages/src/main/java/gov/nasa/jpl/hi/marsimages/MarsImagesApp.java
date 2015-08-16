@@ -18,9 +18,13 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
+import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -81,6 +85,7 @@ public class MarsImagesApp extends Application {
                         .defaultDisplayImageOptions(defaultOptions)
                         .build();
         ImageLoader.getInstance().init(config);
+        enableHttpResponseCache(); //enable caching of URL gets such as location data
     }
 
     @Override
@@ -158,7 +163,6 @@ public class MarsImagesApp extends Application {
     }
 
     public List<int[]> getLocations(Context context) {
-
         if (locations != null) return locations;
 
         locationsDoneLoading = false;
@@ -168,22 +172,27 @@ public class MarsImagesApp extends Application {
             locationsURL = new URL(urlPrefix+"/locations/location_manifest.csv");
             Log.d(TAG, "location url: %@" + locationsURL);
 
-            final Reader reader = new InputStreamReader(locationsURL.openStream());
-            final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+            HttpURLConnection urlConnection = (HttpURLConnection)locationsURL.openConnection();
             try {
-                locations = new ArrayList<int[]>();
-                for (final CSVRecord record : parser) {
-                    final int siteIndex = Integer.parseInt(record.get(0));
-                    final int driveIndex = Integer.parseInt(record.get(1));
-                    locations.add(new int[] {siteIndex, driveIndex});
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                final Reader reader = new InputStreamReader(in);
+                final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+                try {
+                    locations = new ArrayList<int[]>();
+                    for (final CSVRecord record : parser) {
+                        final int siteIndex = Integer.parseInt(record.get(0));
+                        final int driveIndex = Integer.parseInt(record.get(1));
+                        locations.add(new int[]{siteIndex, driveIndex});
+                    }
+                } finally {
+                    parser.close();
+                    reader.close();
                 }
 
                 Intent intent = new Intent(LOCATIONS_LOADED);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
-
             } finally {
-                parser.close();
-                reader.close();
+                urlConnection.disconnect();
             }
         } catch (MalformedURLException e) {
             Log.e(TAG, "Badly formatted URL for location manifest: "+locationsURL);
@@ -214,6 +223,18 @@ public class MarsImagesApp extends Application {
     public static void enableMenuItem(MenuItem menuItem) {
         menuItem.setEnabled(true);
         menuItem.getIcon().setAlpha(255);
+    }
+
+    private void enableHttpResponseCache() {
+        try {
+            long httpCacheSize = 10 * 1024 * 1024; // 10 MiB
+            File httpCacheDir = new File(getCacheDir(), "http");
+            Class.forName("android.net.http.HttpResponseCache")
+                    .getMethod("install", File.class, long.class)
+                    .invoke(null, httpCacheDir, httpCacheSize);
+        } catch (Exception httpResponseCacheNotAvailable) {
+            Log.d(TAG, "HTTP response cache is unavailable.");
+        }
     }
 }
 
