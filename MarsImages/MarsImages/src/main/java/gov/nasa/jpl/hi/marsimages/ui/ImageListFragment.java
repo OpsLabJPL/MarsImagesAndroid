@@ -216,7 +216,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
                 ImageLoader.getInstance().displayImage(thumbnailURL, holder.imageView);
             }
 
-            if (i == EVERNOTE.getNotesCount() - 1)
+            if (i == EVERNOTE.getNotesCount() - 1 && EVERNOTE.hasNotesRemaining)
                 EVERNOTE.loadMoreImages(getActivity());
 
             return view;
