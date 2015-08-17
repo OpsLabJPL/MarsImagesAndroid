@@ -33,14 +33,18 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
     private float mPreviousX = 0f;
     private float mPreviousY = 0f;
     private SensorManager mSensorManager;
-    private float deviceAzimuth;
-    private float devicePitch;
-    private final float[] mRotationMatrix = new float[16];
-    private final float[] values = new float[3];
-    float[] mGravity;
-    float[] mGeomagnetic;
+    private Sensor accelerometer;
+    private Sensor magnetometer;
     private ScaleGestureDetector mScaleDetector;
     private int mActivePointerId;
+    private float[] mLastAccelerometer = new float[3];
+    private float[] mLastMagnetometer = new float[3];
+    private boolean mLastAccelerometerSet = false;
+    private boolean mLastMagnetometerSet = false;
+    private float[] mR = new float[9];
+    private float[] mR2= new float[9];
+    private float[] mI = new float[9];
+    private float[] mOrientation = new float[3];
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -56,9 +60,9 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
         super.setRenderer(renderer);
 
         mSensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
-        Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
 
         mScaleDetector = new ScaleGestureDetector(getActivity(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -73,6 +77,17 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
             }
         });
         return mSurfaceView;
+    }
+
+    public void onResume() {
+        super.onResume();
+        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+    }
+
+    public void onPause() {
+        super.onPause();
+        mSensorManager.unregisterListener(this);
     }
 
     @Override
@@ -136,45 +151,54 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
         return renderer;
     }
 
+    int i = 0;
+    float[] accelVals = new float[3];
+    float[] compassVals = new float[3];
+
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-            // convert the rotation-vector to a 4x4 matrix. the matrix
-            // is interpreted by Open GL as the inverse of the
-            // rotation-vector, which is what we want.'
-            SensorManager.getRotationMatrixFromVector(
-                    mRotationMatrix, event.values);
-            SensorManager.getOrientation(mRotationMatrix, values);
-//            Log.d(TAG,"Values: "+Math.toDegrees(values[0])+"\t"+Math.toDegrees(values[1])+"\t"+Math.toDegrees(values[2]));
-            deviceAzimuth = values[0]; //radian angle about Z axis pointing down toward Earth, counterclockwise
-            if (deviceAzimuth < 0) deviceAzimuth += 2*Math.PI;
-            devicePitch = values[1]; //radian angle about X axis pointing toward West, counterclockwise. Offset by 90 degrees'
-            if (Float.isNaN(devicePitch)) devicePitch = 0;
-            devicePitch += Math.PI/4; //offset of 90 degrees to put 0 at the horizon instead of up.
+        if (event.sensor == accelerometer) {
+            System.arraycopy(event.values, 0, mLastAccelerometer, 0, event.values.length);
+            accelVals = lowPass( event.values.clone(), accelVals );
+            mLastAccelerometerSet = true;
+        } else if (event.sensor == magnetometer) {
+            System.arraycopy(event.values, 0, mLastMagnetometer, 0, event.values.length);
+            compassVals = lowPass( event.values.clone(), compassVals );
+            mLastMagnetometerSet = true;
         }
-
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-            mGravity = event.values;
-        if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
-            mGeomagnetic = event.values;
-        if (mGravity != null && mGeomagnetic != null) {
-            float R[] = new float[9];
-            float I[] = new float[9];
-            boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
-            if (success) {
-                float orientation[] = new float[3];
-                SensorManager.getOrientation(R, orientation);
-                deviceAzimuth = orientation[0]; // orientation contains: azimut, pitch and roll
-                devicePitch = orientation[1];
-                renderer.setDeviceOrientationAngles(deviceAzimuth, devicePitch);
-//                Log.d(TAG, "Azimuth: "+Math.toDegrees(deviceAzimuth)+"   Pitch: "+Math.toDegrees(devicePitch));
-            }
+        if (mLastAccelerometerSet && mLastMagnetometerSet) {
+            SensorManager.getRotationMatrix(mR, mI, accelVals, compassVals);
+            SensorManager.remapCoordinateSystem(mR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mR2);
+            System.arraycopy(mR2, 0, mR, 0, mR2.length);
+            SensorManager.getOrientation(mR, mOrientation);
+            float azimuthInRadians = -mOrientation[0];
+            float pitchInRadians = -mOrientation[1];
+            renderer.setDeviceOrientationAngles(azimuthInRadians, pitchInRadians);
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) { }
 
+    /*
+     * time smoothing constant for low-pass filter
+     * 0 ≤ alpha ≤ 1 ; a smaller value basically means more smoothing
+     * See: http://en.wikipedia.org/wiki/Low-pass_filter#Discrete-time_realization
+     */
+    static final float ALPHA = 0.15f;
 
+    /**
+     * @see http://en.wikipedia.org/wiki/Low-pass_filter#Algorithmic_implementation
+     * @see http://developer.android.com/reference/android/hardware/SensorEvent.html#values
+     * http://blog.thomnichols.org/2011/08/smoothing-sensor-data-with-a-low-pass-filter
+     */
+    protected float[] lowPass( float[] input, float[] output ) {
+        if ( output == null ) return input;
+
+        for ( int i=0; i<input.length; i++ ) {
+            output[i] = output[i] + ALPHA * (input[i] - output[i]);
+        }
+        return output;
+    }
 
 }

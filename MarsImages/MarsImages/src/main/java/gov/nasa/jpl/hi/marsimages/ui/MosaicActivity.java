@@ -6,6 +6,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -25,6 +26,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.enableMenuItem;
 public class MosaicActivity extends AppCompatActivity {
 
     public static final String INTENT_ACTION_MOSAIC = "gov.nasa.jpl.hi.marsimages.MOSAIC";
+    public static final String STATE_GYRO = "state_gyro";
     private static final String TAG = "MosaicActivity";
     private MarsRajawaliFragment mosaicFragment;
     private MenuItem backMenuItem;
@@ -39,7 +41,19 @@ public class MosaicActivity extends AppCompatActivity {
         mosaicFragment = (MarsRajawaliFragment) getSupportFragmentManager().findFragmentById(R.id.mosaicFragment);
         scene = mosaicFragment.getRenderer();
         caption = (TextView) findViewById(R.id.captionTextView);
+        if (savedInstanceState != null) {
+            boolean gyroFlag = savedInstanceState.getBoolean(STATE_GYRO);
+            if (scene.isGyroEnabled() != gyroFlag) {
+                scene.toggleGyro();
+            }
+        }
+    }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        boolean gyroFlag = scene.isGyroEnabled();
+        outState.putBoolean(STATE_GYRO, gyroFlag);
     }
 
     @Override
@@ -58,7 +72,7 @@ public class MosaicActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == R.id.gyroMenuItem) {
-//            mosaicFragment.getRenderer().toggleGyro(); TODO re-enable this later when I want to fight with it again
+            mosaicFragment.getRenderer().toggleGyro();
             return true;
         }
         else if (id == R.id.goBack) {

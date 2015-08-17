@@ -156,6 +156,10 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         super.destroyScene();
     }
 
+    public boolean isGyroEnabled() {
+        return gyroEnabled;
+    }
+
     public void toggleGyro() {
         gyroEnabled = !gyroEnabled;
         Log.d(TAG, "Gyro " + (gyroEnabled ? "True" : "False"));
