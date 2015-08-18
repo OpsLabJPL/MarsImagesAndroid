@@ -64,6 +64,10 @@ public class MosaicActivity extends AppCompatActivity {
         forwardMenuItem = menu.findItem(R.id.goForward);
         MarsImagesApp.disableMenuItem(backMenuItem);
         MarsImagesApp.enableMenuItem(forwardMenuItem);
+
+        MenuItem item = menu.findItem(R.id.gyroMenuItem);
+        item.setIcon(mosaicFragment.getRenderer().isGyroEnabled() ? R.drawable.compass_on : R.drawable.compass_off);
+
         return true;
     }
 
@@ -73,6 +77,7 @@ public class MosaicActivity extends AppCompatActivity {
 
         if (id == R.id.gyroMenuItem) {
             mosaicFragment.getRenderer().toggleGyro();
+            item.setIcon(mosaicFragment.getRenderer().isGyroEnabled() ? R.drawable.compass_on : R.drawable.compass_off);
             return true;
         }
         else if (id == R.id.goBack) {

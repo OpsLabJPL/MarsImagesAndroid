@@ -9,6 +9,6 @@
         android:icon="@drawable/ic_action_forward"
         android:orderInCategory="2" app:showAsAction="always" />
     <item android:id="@+id/gyroMenuItem" android:title=""
-        android:icon="@drawable/compass"
+        android:icon="@drawable/compass_off"
         android:orderInCategory="3" app:showAsAction="always" />
 </menu>
