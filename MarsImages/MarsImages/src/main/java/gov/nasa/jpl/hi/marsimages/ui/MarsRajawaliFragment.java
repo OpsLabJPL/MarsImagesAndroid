@@ -12,6 +12,7 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import com.powellware.marsimages.R;
@@ -168,7 +169,15 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
         }
         if (mLastAccelerometerSet && mLastMagnetometerSet) {
             SensorManager.getRotationMatrix(mR, mI, accelVals, compassVals);
-            SensorManager.remapCoordinateSystem(mR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mR2);
+//            SensorManager.remapCoordinateSystem(mR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mR2);
+            int rotation = ((WindowManager) getActivity().getApplicationContext().getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation();
+//            Log.d(TAG, "Rotation is "+rotation);
+            if(rotation == 0) { // Default display rotation is portrait
+                SensorManager.remapCoordinateSystem(mR, SensorManager.AXIS_MINUS_Z, SensorManager.AXIS_X, mR2);
+            }
+            else {  // Default display rotation is landscape
+                SensorManager.remapCoordinateSystem(mR, SensorManager.AXIS_X, SensorManager.AXIS_Z, mR2);
+            }
             System.arraycopy(mR2, 0, mR, 0, mR2.length);
             SensorManager.getOrientation(mR, mOrientation);
             float azimuthInRadians = -mOrientation[0];
