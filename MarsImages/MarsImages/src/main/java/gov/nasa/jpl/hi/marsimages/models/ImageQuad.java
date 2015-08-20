@@ -208,7 +208,7 @@ public class ImageQuad extends Quad {
         double angleBetweenRadians = Math.acos(Number3D.dot(cameraPointing, sphereVector));
 
 //        return angleBetweenRadians - Math.toRadians(camera.getFieldOfView()) - roverCameraFOVRadians <= 0;
-        return angleBetweenRadians - roverCameraFOVRadians*.7071 < Math.toRadians(viewPortCamera.getFieldOfView())*.7071;
+        return angleBetweenRadians - roverCameraFOVRadians < Math.toRadians(viewPortCamera.getFieldOfView())*.7071;
     }
 
 
