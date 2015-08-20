@@ -65,8 +65,16 @@ public class MosaicActivity extends AppCompatActivity {
         MarsImagesApp.disableMenuItem(backMenuItem);
         MarsImagesApp.enableMenuItem(forwardMenuItem);
 
+        SensorManager mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         MenuItem item = menu.findItem(R.id.gyroMenuItem);
-        item.setIcon(mosaicFragment.getRenderer().isGyroEnabled() ? R.drawable.compass_on : R.drawable.compass_off);
+        if (accelerometer != null && magnetometer != null) {
+            item.setIcon(mosaicFragment.getRenderer().isGyroEnabled() ? R.drawable.compass_on : R.drawable.compass_off);
+        }
+        else {
+            menu.removeItem(R.id.gyroMenuItem);
+        }
 
         return true;
     }

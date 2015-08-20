@@ -358,6 +358,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         } else {
             M.quatva(y_axis, deviceAzimuth, rotAz);
             M.quatva(x_axis, devicePitch, rotEl);
+            rotationX = deviceAzimuth;
+            rotationY = devicePitch;
         }
         M.multqv(rotEl, forwardVector, look1);
         M.multqv(rotAz, look1, look2);
