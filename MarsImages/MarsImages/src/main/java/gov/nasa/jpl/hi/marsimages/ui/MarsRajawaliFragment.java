@@ -6,7 +6,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -156,6 +155,8 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
     float[] accelVals = new float[3];
     float[] compassVals = new float[3];
 
+    static final float ANTI_JITTER_FACTOR = 1f;
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor == accelerometer) {
@@ -182,8 +183,20 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
             SensorManager.getOrientation(mR, mOrientation);
             float azimuthInRadians = -mOrientation[0];
             float pitchInRadians = -mOrientation[1];
+            float currentAz = (float) renderer.getDeviceAzimuth();
+            float currentPitch = (float) renderer.getDevicePitch();
+            float deltaAz = constrainAngle(azimuthInRadians - currentAz);
+            float deltaPitch = constrainAngle(pitchInRadians - currentPitch);
+            azimuthInRadians = (float) (currentAz + deltaAz*Math.abs(Math.sin(deltaAz*ANTI_JITTER_FACTOR)));
+            pitchInRadians = (float) (currentPitch + deltaPitch*Math.abs(Math.sin(deltaPitch*ANTI_JITTER_FACTOR)));
             renderer.setDeviceOrientationAngles(azimuthInRadians, pitchInRadians);
         }
+    }
+
+    float constrainAngle(float angle) {
+        if (angle < -Math.PI) return (float) Math.min(Math.PI/2, angle + Math.PI*2);
+        if (angle > Math.PI) return (float) Math.max(Math.PI/2, angle - Math.PI*2);
+        return angle;
     }
 
     @Override
@@ -194,7 +207,7 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
      * 0 ≤ alpha ≤ 1 ; a smaller value basically means more smoothing
      * See: http://en.wikipedia.org/wiki/Low-pass_filter#Discrete-time_realization
      */
-    static final float ALPHA = 0.3f;
+    static final float ALPHA = 0.15f;
 
     /**
      * @see http://en.wikipedia.org/wiki/Low-pass_filter#Algorithmic_implementation

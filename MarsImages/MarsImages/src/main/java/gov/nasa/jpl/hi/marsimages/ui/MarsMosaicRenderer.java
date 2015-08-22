@@ -174,6 +174,14 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         this.devicePitch = devicePitch;
     }
 
+    public double getDeviceAzimuth() {
+        return deviceAzimuth;
+    }
+
+    public double getDevicePitch() {
+        return devicePitch;
+    }
+
     public void incrementCameraMotion(float xMovement, float yMovement) {
         cameraRelativeXMotion += xMovement;
         cameraRelativeYMotion += yMovement;
