@@ -29,6 +29,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +62,7 @@ public class MarsImagesApp extends Application {
     private long pauseTimestamp;
     private List<int[]> locations; //lazily initialized
     private boolean locationsDoneLoading = false;
+    private HashMap<String, int[]> places = new LinkedHashMap<String, int[]>();
 
     public MarsImagesApp() {
         MARS_IMAGES = this;
@@ -114,6 +117,7 @@ public class MarsImagesApp extends Application {
             Intent intent = new Intent(MISSION_CHANGED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
             locations = null;
+            places.clear();
         }
     }
 
@@ -206,13 +210,51 @@ public class MarsImagesApp extends Application {
         return locations;
     }
 
-    public void reloadLocations() {
-        locations = null;
-        getLocations(getApplicationContext());
-    }
-
     public boolean hasLocations() {
         return locationsDoneLoading;
+    }
+
+    public boolean hasPlaces() {
+        return !places.isEmpty();
+    }
+
+    public HashMap<String, int[]> getPlaces() {
+        if (!places.isEmpty()) return places;
+
+        String urlPrefix = getMission().getURLPrefix();
+        URL locationsURL = null;
+        try {
+            locationsURL = new URL(urlPrefix+"/locations/named_locations.csv");
+            Log.d(TAG, "places url: %@" + locationsURL);
+
+            HttpURLConnection urlConnection = (HttpURLConnection)locationsURL.openConnection();
+            try {
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                final Reader reader = new InputStreamReader(in);
+                final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
+                try {
+                    for (final CSVRecord record : parser) {
+                        final int siteIndex = Integer.parseInt(record.get(0).trim());
+                        final int driveIndex = Integer.parseInt(record.get(1).trim());
+                        final String name = record.get(2);
+                        places.put(name, new int[]{siteIndex, driveIndex});
+                    }
+                } finally {
+                    parser.close();
+                    reader.close();
+                }
+            } finally {
+                urlConnection.disconnect();
+            }
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "Badly formatted URL for location manifest: "+locationsURL);
+            locations = Collections.EMPTY_LIST;
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading from location manifest URL: "+locationsURL);
+            locations = Collections.EMPTY_LIST;
+        }
+
+        return places;
     }
 
     public static void disableMenuItem(MenuItem menuItem) {

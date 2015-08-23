@@ -7,16 +7,22 @@ import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.PersistableBundle;
+import android.provider.ContactsContract;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.PopupMenu;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.TextView;
 
 import com.powellware.marsimages.R;
 
+import java.util.HashMap;
+
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
+import gov.nasa.jpl.hi.marsimages.models.M;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.disableMenuItem;
@@ -76,6 +82,25 @@ public class MosaicActivity extends AppCompatActivity {
             menu.removeItem(R.id.gyroMenuItem);
         }
 
+        final MenuItem mPlacesMenuItem = menu.findItem(R.id.placesMenuItem);
+        if (!MARS_IMAGES.hasPlaces()) {
+            mPlacesMenuItem.setEnabled(false);
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... params) {
+                    MARS_IMAGES.getPlaces();
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void aVoid) {
+                    mPlacesMenuItem.setEnabled(true);
+                }
+            }.execute();
+        } else {
+            mPlacesMenuItem.setEnabled(true);
+        }
+
         return true;
     }
 
@@ -131,8 +156,43 @@ public class MosaicActivity extends AppCompatActivity {
             }.execute();
             return true;
         }
+        else if (id == R.id.placesMenuItem) {
+            if (MARS_IMAGES.hasPlaces()) {
+                final PopupMenu menu = new PopupMenu(this, findViewById(id));
+                for (String name : MARS_IMAGES.getPlaces().keySet()) {
+                    menu.getMenu().add(name);
+                }
+                menu.show();
+
+                menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        final String name = item.getTitle().toString();
+                        final int[] rmc = MARS_IMAGES.getPlaces().get(name);
+                        if (rmc != null) {
+                            new AsyncTask<Void,Void,Void>() {
+                                @Override
+                                protected Void doInBackground(Void... params) {
+                                    scene.deleteImages();
+                                    scene.addImagesToScene(rmc);
+                                    return null;
+                                }
+                            }.execute();
+                        }
+                        return true;
+                    }
+                });
+            }
+        }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    public View getActionBarView() {
+        Window window = getWindow();
+        View v = window.getDecorView();
+        int resId = getResources().getIdentifier("action_bar_container", "id", "android");
+        return v.findViewById(resId);
     }
 
     public void updateLocationMenuItems() {

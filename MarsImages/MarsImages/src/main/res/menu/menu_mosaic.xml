@@ -11,4 +11,6 @@
     <item android:id="@+id/gyroMenuItem" android:title=""
         android:icon="@drawable/compass_off"
         android:orderInCategory="3" app:showAsAction="always" />
+    <item android:id="@+id/placesMenuItem" android:title="Places"
+        android:orderInCategory="4" app:showAsAction="always" />
 </menu>
