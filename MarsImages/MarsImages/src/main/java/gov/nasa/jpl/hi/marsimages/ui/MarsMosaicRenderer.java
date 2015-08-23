@@ -10,6 +10,7 @@ import android.opengl.GLES20;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.view.View;
 
 import com.evernote.edam.type.Note;
 import com.powellware.marsimages.R;
@@ -142,6 +143,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     public void addImagesToScene(int[] rmc) {
         this.rmc = rmc;
         Rover mission = MARS_IMAGES.getMission();
+        ((MosaicActivity)getContext()).showProgress();
         ((MosaicActivity)getContext()).updateCaption(rmc);
         int site_index = rmc[0];
         int drive_index = rmc[1];
@@ -290,10 +292,10 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
                         @Override
                         protected void onPostExecute(final List<QuadInitializer> initializers) {
+                            ((MosaicActivity)getContext()).getProgressBar().setVisibility(View.INVISIBLE);
                             mSurfaceView.queueEvent(new Runnable() {
                                 @Override
                                 public void run() {
-//                                    Log.d(TAG, "Adding image quads to scene");
                                     for (QuadInitializer i : initializers) {
                                         ImageQuad quad = new ImageQuad(i.model, qLL, i.imageId);
                                         if (!hasChild(quad)) {

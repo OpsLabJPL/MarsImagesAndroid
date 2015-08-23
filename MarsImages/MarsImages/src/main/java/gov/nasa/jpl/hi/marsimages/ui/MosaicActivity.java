@@ -15,6 +15,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.powellware.marsimages.R;
@@ -39,6 +40,7 @@ public class MosaicActivity extends AppCompatActivity {
     private MenuItem forwardMenuItem;
     private MarsMosaicRenderer scene;
     private TextView caption;
+    private ProgressBar mProgressBar;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -47,6 +49,7 @@ public class MosaicActivity extends AppCompatActivity {
         mosaicFragment = (MarsRajawaliFragment) getSupportFragmentManager().findFragmentById(R.id.mosaicFragment);
         scene = mosaicFragment.getRenderer();
         caption = (TextView) findViewById(R.id.captionTextView);
+        mProgressBar = (ProgressBar) findViewById(R.id.mosaicProgressBar);
         if (savedInstanceState != null) {
             boolean gyroFlag = savedInstanceState.getBoolean(STATE_GYRO);
             if (scene.isGyroEnabled() != gyroFlag) {
@@ -220,6 +223,19 @@ public class MosaicActivity extends AppCompatActivity {
             @Override
             public void run() {
                 caption.setText(MARS_IMAGES.getMissionName() + " at location " + rmc[0] + "-" + rmc[1]);
+            }
+        });
+    }
+
+    public ProgressBar getProgressBar() {
+        return mProgressBar;
+    }
+
+    public void showProgress() {
+        MosaicActivity.this.caption.post(new Runnable() {
+            @Override
+            public void run() {
+                mProgressBar.setVisibility(View.VISIBLE);
             }
         });
     }
