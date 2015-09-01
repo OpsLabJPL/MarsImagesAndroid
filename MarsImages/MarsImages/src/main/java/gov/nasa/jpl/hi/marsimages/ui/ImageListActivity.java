@@ -51,7 +51,7 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
     private boolean mTwoPane;
     private final int mRequestCode = IMAGE_LIST_REQUEST_CODE;
     private int imageViewPageNumber = 0;
-    MenuItem mMapMenuItem;
+//    MenuItem mMapMenuItem;
     MenuItem mMosaicMenuItem;
 
     @Override
@@ -138,10 +138,10 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
         if (mTwoPane)
             getMenuInflater().inflate(R.menu.image_view, menu);
 
-        mMapMenuItem = menu.findItem(R.id.map);
+//        mMapMenuItem = menu.findItem(R.id.map);
         mMosaicMenuItem = menu.findItem(R.id.mosaic);
         if (!MARS_IMAGES.hasLocations()) {
-            MarsImagesApp.disableMenuItem(mMapMenuItem);
+//            MarsImagesApp.disableMenuItem(mMapMenuItem);
             MarsImagesApp.disableMenuItem(mMosaicMenuItem);
             new AsyncTask<Void, Void, Void>() {
                 @Override
@@ -210,9 +210,9 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
             case R.id.clock:
                 createMarsTimeActivity();
                 return true;
-            case R.id.map:
-                createMapActivity();
-                return true;
+//            case R.id.map:
+//                createMapActivity();
+//                return true;
             case R.id.mosaic:
                 createMosaicActivity();
                 return true;

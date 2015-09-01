@@ -87,7 +87,7 @@ public class MapActivity extends ActionBarActivity {
                 mapView.setTileSource(ws);
                 mapView.setCenter(new LatLng(centerLat, centerLon));
                 mapView.setMinZoomLevel(minZoom);
-                mapView.setMaxZoomLevel(maxZoom);
+                mapView.setMaxZoomLevel(maxNativeZoom); //this should be maxZoom ideally but MapBox has a bug to fix first
                 mapView.setZoom(maxNativeZoom);  //use maxNativeZoom < n <= maxZoom when it is supported
                 frameLayout.addView(mapView);
 

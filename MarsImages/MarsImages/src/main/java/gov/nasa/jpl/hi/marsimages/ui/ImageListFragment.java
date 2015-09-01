@@ -85,7 +85,7 @@ public class ImageListFragment extends Fragment implements AdapterView.OnItemCli
             } else if (intent.getAction().equals(MarsImagesApp.LOCATIONS_LOADED)) {
                 ImageListActivity activity = (ImageListActivity) getActivity();
                 MarsImagesApp.enableMenuItem(activity.mMosaicMenuItem);
-                MarsImagesApp.enableMenuItem(activity.mMapMenuItem);
+//                MarsImagesApp.enableMenuItem(activity.mMapMenuItem);
             }
         }
     };
