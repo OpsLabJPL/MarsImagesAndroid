@@ -19,6 +19,7 @@ import org.json.JSONArray;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -256,12 +257,14 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
             if (intent.getAction().equals(EvernoteMars.END_NOTE_LOADING)) {
                 Integer notesReturned = intent.getIntExtra(EvernoteMars.NUM_NOTES_RETURNED, 0);
-//                Log.d("mosaic receiver", "Notes returned: " + notesReturned);
+                Log.d("mosaic receiver", "PERF Notes returned: " + notesReturned);
 
 
                 if (notesReturned > 0) {
                     EVERNOTE.loadMoreNotes(mContext, false);
                 } else {
+                    Log.d("mosaic receiver", "PERF Total notes returned: "+EVERNOTE.getNotes().size());
+                    ((MosaicActivity)getContext()).getProgressBar().setVisibility(View.INVISIBLE);
                     new AsyncTask<Void, Void, List<QuadInitializer>>() {
                         @Override
                         protected List<QuadInitializer> doInBackground(Void... voids) {
@@ -272,12 +275,16 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                             List<QuadInitializer> quadInitializers = new ArrayList<QuadInitializer>();
 //                            Log.d(TAG, "Making image quads");
                             List<Note> notes = EVERNOTE.getNotes();
-                            binImagesByPointing(notes);
+                            Map<String, JSONArray> modelsForNotes = new HashMap<String, JSONArray>();
+                            for (Note note : notes) {
+                                modelsForNotes.put(note.getTitle(), rover.modelJson(note));
+                            }
+                            binImagesByPointing(notes, modelsForNotes);
                             int mosaicCount = 0;
                             for (String photoTitle : notesInScene.keySet()) {
                                 Note photo = notesInScene.get(photoTitle);
 
-                                JSONArray model_json = rover.modelJson(photo);
+                                JSONArray model_json = modelsForNotes.get(photo.getTitle());
                                 if (model_json == null)
                                     continue;
 
@@ -292,41 +299,41 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 
                         @Override
                         protected void onPostExecute(final List<QuadInitializer> initializers) {
-                            ((MosaicActivity)getContext()).getProgressBar().setVisibility(View.INVISIBLE);
-                            mSurfaceView.queueEvent(new Runnable() {
-                                @Override
-                                public void run() {
-                                    for (QuadInitializer i : initializers) {
-                                        ImageQuad quad = new ImageQuad(i.model, qLL, i.imageId);
-                                        if (!hasChild(quad)) {
-                                            quad.setDrawingMode(GL_LINE_LOOP);
-                                            quad.setMaterial(yellowMaterial);
-                                            quad.addLight(mLight);
-                                            addChild(quad);
-                                            photoQuads.put(i.photoTitle, quad);
+                            Log.d("mosaic receiver", "PERF ready to add quads to scene");
+                            for (final QuadInitializer i : initializers) {
+                                mSurfaceView.queueEvent(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                            ImageQuad quad = new ImageQuad(i.model, qLL, i.imageId);
+                                            if (!hasChild(quad)) {
+                                                quad.setDrawingMode(GL_LINE_LOOP);
+                                                quad.setMaterial(yellowMaterial);
+                                                quad.addLight(mLight);
+                                                addChild(quad);
+                                                photoQuads.put(i.photoTitle, quad);
                                         }
                                     }
-                                }
-                            });
+                                });
+                            }
                         }
                     }.execute();//when there are no more notes returned, we have all images for this location: add them to the scene
                 }
             }
         }
 
-        private void binImagesByPointing(List<Note> imagesForRMC) {
+        private void binImagesByPointing(List<Note> imagesForRMC, Map<String, JSONArray> modelsForNotes) {
             Rover rover = MARS_IMAGES.getMission();
             for (Note prospectiveImage : imagesForRMC) {
                 //filter out any images that aren't on the mast i.e. mosaic-able.
                 if (!rover.includedInMosaic(prospectiveImage))
                     continue;
 
-                double[] v2 = CameraModel.pointingVector(rover.modelJson(prospectiveImage));
+                double[] v2 = CameraModel.pointingVector(modelsForNotes.get(prospectiveImage.getTitle()));
                 double angleThreshold = rover.fieldOfView(prospectiveImage)/20; //less overlap than ~5 degrees for Mastcam is problem for memory: see 42-852 looking south for example
                 boolean tooCloseToAnotherImage = false;
                 for (String title : notesInScene.keySet()) {
                     Note image = notesInScene.get(title);
-                    double[] v1 = CameraModel.pointingVector(rover.modelJson(image));
+                    double[] v1 = CameraModel.pointingVector(modelsForNotes.get(image.getTitle()));
                     if (CameraModel.angularDistance(v1, v2) < angleThreshold &&
                             M.epsilonEquals(rover.fieldOfView(image), rover.fieldOfView(prospectiveImage))) {
                         tooCloseToAnotherImage = true;
