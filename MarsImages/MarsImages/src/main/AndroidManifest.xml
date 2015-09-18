@@ -57,7 +57,7 @@
                 android:value="gov.nasa.jpl.hi.marsimages.ui.ImageViewActivity" />
         </activity>
 
-        <receiver android:name="gov.nasa.jpl.hi.marsimages.ui.ImageListActivity$WifiStateReceiver">
+        <receiver android:name="gov.nasa.jpl.hi.marsimages.EvernoteMars$WifiStateReceiver">
             <intent-filter>
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
             </intent-filter>

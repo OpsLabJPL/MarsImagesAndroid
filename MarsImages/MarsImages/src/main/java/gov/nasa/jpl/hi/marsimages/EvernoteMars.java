@@ -400,18 +400,6 @@ public class EvernoteMars {
         return formattedText.toString();
     }
 
-    public AlertDialog getAlertDialog(Context context, String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setMessage(message)
-                .setCancelable(false)
-                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.dismiss();
-                    }
-                });
-        return builder.create();
-    }
-
     public static class WifiStateReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {

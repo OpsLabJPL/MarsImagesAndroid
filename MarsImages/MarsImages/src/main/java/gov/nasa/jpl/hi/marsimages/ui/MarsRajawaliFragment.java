@@ -25,7 +25,7 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
 
     public static final float MIN_ZOOM = 0.5f;
     public static final float MAX_ZOOM = 5.0f;
-    private static final String TAG = "MarsRajawaliFragment";
+    static final String TAG = "MarsRajawaliFragment";
     private static final int INVALID_POINTER_ID = -1;
 
     private MarsMosaicRenderer renderer;
@@ -37,8 +37,6 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
     private Sensor magnetometer;
     private ScaleGestureDetector mScaleDetector;
     private int mActivePointerId;
-    private float[] mLastAccelerometer = new float[3];
-    private float[] mLastMagnetometer = new float[3];
     private boolean mLastAccelerometerSet = false;
     private boolean mLastMagnetometerSet = false;
     private float[] mR = new float[9];
@@ -151,7 +149,6 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
         return renderer;
     }
 
-    int i = 0;
     float[] accelVals = new float[3];
     float[] compassVals = new float[3];
 
@@ -160,11 +157,9 @@ public class MarsRajawaliFragment extends RajawaliFragment implements SensorEven
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor == accelerometer) {
-            System.arraycopy(event.values, 0, mLastAccelerometer, 0, event.values.length);
             accelVals = lowPass( event.values.clone(), accelVals );
             mLastAccelerometerSet = true;
         } else if (event.sensor == magnetometer) {
-            System.arraycopy(event.values, 0, mLastMagnetometer, 0, event.values.length);
             compassVals = lowPass( event.values.clone(), compassVals );
             mLastMagnetometerSet = true;
         }

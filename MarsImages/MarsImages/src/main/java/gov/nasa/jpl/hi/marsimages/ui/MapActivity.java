@@ -1,10 +1,9 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
-import android.app.Activity;
 import android.graphics.PointF;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.FrameLayout;
 
@@ -21,13 +20,12 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import gov.nasa.jpl.hi.marsimages.JsonReader;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 
-public class MapActivity extends ActionBarActivity {
+public class MapActivity extends AppCompatActivity {
 
     public static final String INTENT_ACTION_MAP = "gov.nasa.jpl.hi.marsimages.MAP";
     private static final String MAP = "MissionMap";

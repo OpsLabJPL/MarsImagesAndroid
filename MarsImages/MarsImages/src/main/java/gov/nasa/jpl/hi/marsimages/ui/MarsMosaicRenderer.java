@@ -59,8 +59,8 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     public static final float FAR_PLANE = 12.0f;
     public static final float NEAR_PLANE = 0.1f;
     public static final int NOMINAL_FOV = 45;
-    private final float TOUCH_SCALE_FACTOR = .0015f;
-    private final float COMPASS_HEIGHT = 0.5f;
+    private static final float TOUCH_SCALE_FACTOR = .0015f;
+    private static final float COMPASS_HEIGHT = 0.5f;
     private final double[] x_axis = {1f, 0f, 0f};
     private final double[] y_axis = {0f, 1f, 0f};
 
@@ -73,7 +73,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private float cameraRelativeYMotion = 0f;
 
     private DiffuseMaterial yellowMaterial;
-    private Quad mCompass;
     private Map<String, ImageQuad> photoQuads = new ConcurrentHashMap<>();
     private double[] forwardVector = {0, 0, -1};
     private double rotAz[] = new double[4], rotEl[] = new double[4];
@@ -86,8 +85,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     private Plane plane;
     private boolean mScaleChanged = false;
 
-    public ConcurrentLinkedQueue<Runnable> glRunnables = new ConcurrentLinkedQueue<Runnable>();
-    private TextureInfo hoverCompassTextureInfo;
+    public ConcurrentLinkedQueue<Runnable> glRunnables = new ConcurrentLinkedQueue<>();
 
     public MarsMosaicRenderer(Context context) {
         super(context);
@@ -149,13 +147,15 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         int site_index = rmc[0];
         int drive_index = rmc[1];
         qLL = mission.localLevelQuaternion(site_index, drive_index);
-        EVERNOTE.setSearchWords(String.format("RMC %06d-%06d", site_index, drive_index), mContext);
-        EVERNOTE.reloadNotes(mContext); //rely on the resultant note load end broadcast receiver to populate images in the scene
+        EvernoteMars.setSearchWords(String.format("RMC %06d-%06d", site_index, drive_index), mContext);
+        EvernoteMars.reloadNotes(mContext); //rely on the resultant note load end broadcast receiver to populate images in the scene
     }
 
     @Override
     protected void destroyScene() {
+        LocalBroadcastManager.getInstance(mContext).unregisterReceiver(mMessageReceiver);
         deleteImages();
+        EvernoteMars.setSearchWords(null, mContext);
         super.destroyScene();
     }
 
@@ -190,13 +190,19 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         cameraRelativeYMotion += yMovement;
     }
 
+    @Override
+    public void onSurfaceDestroyed() {
+        super.onSurfaceDestroyed();
+    }
+
     public void deleteImages() {
         notesInScene.clear();
         mSurfaceView.queueEvent(new Runnable() {
             @Override
             public void run() {
                 for (ImageQuad photoQuad : photoQuads.values()) {
-                    mTextureManager.removeTextures(photoQuad.getTextureInfoList());
+                    if (photoQuad.getMaterial() != null)
+                        mTextureManager.removeTextures(photoQuad.getTextureInfoList());
                 }
                 photoQuads.clear();
                 clearChildren();
@@ -206,9 +212,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
     }
 
     private void prepareImageQuads() {
-
-        int skippedImages = 0;
-        int drawnImages = 0;
 
         float[] viewMatrix = mCamera.getViewMatrix();
         float[] projectionMatrix = mCamera.getProjectionMatrix();
@@ -220,7 +223,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
 //            if (!mCamera.mFrustum.sphereInFrustum(imageQuad.getBoundsCenter(), (float)imageQuad.getBoundsRadius())) { //This doesn't work. Bad on them.
 
             if (!imageQuad.cameraIsLookingAtMe(getCamera())) {
-                skippedImages++;
                 imageQuad.setVisible(false);
                 imageQuad.stopLoading();
                 mTextureManager.removeTextures(imageQuad.getTextureInfoList());
@@ -230,22 +232,16 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                 continue;
             }
             imageQuad.setVisible(true);
-            drawnImages++;
             if (imageQuad.getTextureInfoList().size() == 0 || mScaleChanged) {
-//                Log.d(TAG, "No texture for "+title+ " isLoading: "+imageQuad.isLoading());
                 prepareImageQuad(imageQuad, title);
             }
         }
         mScaleChanged = false;
-//        Log.d(TAG, "images skipped: "+skippedImages);
-//        Log.d(TAG, "images drawn: "+drawnImages);
     }
 
     private void prepareImageQuad(ImageQuad imageQuad, String title) {
-//        if (imageQuad.getTextureInfoList().isEmpty()) {
-            Note photo = notesInScene.get(title);
-            imageQuad.loadImageAndTexture(photo, title, computeIdealImageResolution(photo), this);
-//        }
+        Note photo = notesInScene.get(title);
+        imageQuad.loadImageAndTexture(photo, title, computeIdealImageResolution(photo), this);
     }
 
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -270,17 +266,16 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                         protected List<QuadInitializer> doInBackground(Void... voids) {
 
                             if (!photoQuads.isEmpty())
-                                return Collections.EMPTY_LIST; //we've already made the image quads
+                                return Collections.emptyList(); //we've already made the image quads
 
-                            List<QuadInitializer> quadInitializers = new ArrayList<QuadInitializer>();
+                            List<QuadInitializer> quadInitializers = new ArrayList<>();
 //                            Log.d(TAG, "Making image quads");
                             List<Note> notes = EVERNOTE.getNotes();
-                            Map<String, JSONArray> modelsForNotes = new HashMap<String, JSONArray>();
+                            Map<String, JSONArray> modelsForNotes = new HashMap<>();
                             for (Note note : notes) {
                                 modelsForNotes.put(note.getTitle(), rover.modelJson(note));
                             }
                             binImagesByPointing(notes, modelsForNotes);
-                            int mosaicCount = 0;
                             for (String photoTitle : notesInScene.keySet()) {
                                 Note photo = notesInScene.get(photoTitle);
 
@@ -288,7 +283,6 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
                                 if (model_json == null)
                                     continue;
 
-                                mosaicCount++;
                                 Model model = CameraModel.getModel(model_json);
                                 String imageId = MARS_IMAGES.getMission().getImageID(photo.getResources().get(0));
                                 quadInitializers.add(new QuadInitializer(model, imageId, photoTitle));
@@ -325,7 +319,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             Rover rover = MARS_IMAGES.getMission();
             for (Note prospectiveImage : imagesForRMC) {
                 //filter out any images that aren't on the mast i.e. mosaic-able.
-                if (!rover.includedInMosaic(prospectiveImage))
+                if (!Rover.includedInMosaic(prospectiveImage))
                     continue;
 
                 double[] v2 = CameraModel.pointingVector(modelsForNotes.get(prospectiveImage.getTitle()));
@@ -387,7 +381,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         Log.d(TAG, "Adding hover compass...");
         int[] maxTextureSize = new int[1];
         GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
-        Bitmap bg = null;
+        Bitmap bg;
         if (maxTextureSize[0] >= 2048)
             bg = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.hover_compass_2k);
         else
@@ -397,7 +391,7 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
         plane.setPosition(0f,COMPASS_HEIGHT,0f);
         plane.setRotX(-90);
         plane.setMaterial(new SimpleMaterial(AMaterial.ALPHA_MASKING));
-        hoverCompassTextureInfo = mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, false);
+        TextureInfo hoverCompassTextureInfo = mTextureManager.addTexture(bg, TextureManager.TextureType.DIFFUSE, false, false);
         plane.addTexture(hoverCompassTextureInfo);
         plane.addLight(mLight);
         addChild(plane);

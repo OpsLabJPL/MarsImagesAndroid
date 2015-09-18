@@ -2,28 +2,20 @@ package gov.nasa.jpl.hi.marsimages.ui;
 
 import android.content.Context;
 import android.hardware.Sensor;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.PersistableBundle;
-import android.provider.ContactsContract;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.PopupMenu;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.powellware.marsimages.R;
 
-import java.util.HashMap;
-
 import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
-import gov.nasa.jpl.hi.marsimages.models.M;
 
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.disableMenuItem;
@@ -34,7 +26,7 @@ public class MosaicActivity extends AppCompatActivity {
 
     public static final String INTENT_ACTION_MOSAIC = "gov.nasa.jpl.hi.marsimages.MOSAIC";
     public static final String STATE_GYRO = "state_gyro";
-    private static final String TAG = "MosaicActivity";
+    static final String TAG = "MosaicActivity";
     private MarsRajawaliFragment mosaicFragment;
     private MenuItem backMenuItem;
     private MenuItem forwardMenuItem;
@@ -191,13 +183,6 @@ public class MosaicActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public View getActionBarView() {
-        Window window = getWindow();
-        View v = window.getDecorView();
-        int resId = getResources().getIdentifier("action_bar_container", "id", "android");
-        return v.findViewById(resId);
-    }
-
     public void updateLocationMenuItems() {
         MosaicActivity.this.caption.post(new Runnable() {
             @Override
@@ -238,5 +223,11 @@ public class MosaicActivity extends AppCompatActivity {
                 mProgressBar.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        scene.onSurfaceDestroyed();
     }
 }

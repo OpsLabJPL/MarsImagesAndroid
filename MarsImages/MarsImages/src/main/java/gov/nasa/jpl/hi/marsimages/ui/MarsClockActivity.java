@@ -1,8 +1,8 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
-import android.os.Handler;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
@@ -18,7 +18,7 @@ import gov.nasa.jpl.hi.marsimages.rovers.Opportunity;
 import static gov.nasa.jpl.hi.marsimages.rovers.MarsTime.CURIOSITY_WEST_LONGITUDE;
 import static gov.nasa.jpl.hi.marsimages.rovers.MarsTime.EARTH_SECS_PER_MARS_SEC;
 
-public class MarsClockActivity extends ActionBarActivity {
+public class MarsClockActivity extends AppCompatActivity {
 
     public static final String INTENT_ACTION_MARS_TIME = "gov.nasa.jpl.hi.marsimages.MARS_TIME";
 

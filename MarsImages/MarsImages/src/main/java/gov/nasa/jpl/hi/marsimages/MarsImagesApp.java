@@ -62,7 +62,7 @@ public class MarsImagesApp extends Application {
     private long pauseTimestamp;
     private List<int[]> locations; //lazily initialized
     private boolean locationsDoneLoading = false;
-    private HashMap<String, int[]> places = new LinkedHashMap<String, int[]>();
+    private HashMap<String, int[]> places = new LinkedHashMap<>();
 
     public MarsImagesApp() {
         MARS_IMAGES = this;
@@ -182,7 +182,7 @@ public class MarsImagesApp extends Application {
                 final Reader reader = new InputStreamReader(in);
                 final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT);
                 try {
-                    locations = new ArrayList<int[]>();
+                    locations = new ArrayList<>();
                     for (final CSVRecord record : parser) {
                         final int siteIndex = Integer.parseInt(record.get(0));
                         final int driveIndex = Integer.parseInt(record.get(1));
@@ -200,10 +200,10 @@ public class MarsImagesApp extends Application {
             }
         } catch (MalformedURLException e) {
             Log.e(TAG, "Badly formatted URL for location manifest: "+locationsURL);
-            locations = Collections.EMPTY_LIST;
+            locations = Collections.emptyList();
         } catch (IOException e) {
             Log.e(TAG, "Error reading from location manifest URL: "+locationsURL);
-            locations = Collections.EMPTY_LIST;
+            locations = Collections.emptyList();
         }
 
         locationsDoneLoading = true;
@@ -248,10 +248,10 @@ public class MarsImagesApp extends Application {
             }
         } catch (MalformedURLException e) {
             Log.e(TAG, "Badly formatted URL for location manifest: "+locationsURL);
-            locations = Collections.EMPTY_LIST;
+            locations = Collections.emptyList();
         } catch (IOException e) {
             Log.e(TAG, "Error reading from location manifest URL: "+locationsURL);
-            locations = Collections.EMPTY_LIST;
+            locations = Collections.emptyList();
         }
 
         return places;

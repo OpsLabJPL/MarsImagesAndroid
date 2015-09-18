@@ -1,65 +1,19 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
 
-import android.annotation.SuppressLint;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.content.res.Configuration;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
-import android.media.MediaScannerConnection;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentStatePagerAdapter;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.view.ViewPager;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.widget.SearchView;
-import android.util.Log;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.ImageView;
-import android.widget.Toast;
 
-import com.evernote.edam.type.Note;
-import com.google.common.collect.Lists;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.powellware.marsimages.R;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.List;
-
-import gov.nasa.jpl.hi.marsimages.EvernoteMars;
-import gov.nasa.jpl.hi.marsimages.MarsImagesApp;
-import gov.nasa.jpl.hi.marsimages.Utils;
-
-import static android.support.v7.app.ActionBar.OnNavigationListener;
 import static gov.nasa.jpl.hi.marsimages.EvernoteMars.EVERNOTE;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES_PREFERENCES_KEY;
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
-import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.VIEW_PAGER_SOURCE;
 
-public class ImageViewActivity extends ActionBarActivity {
+public class ImageViewActivity extends AppCompatActivity {
 
     private ImageViewPagerFragment imageViewPagerFragment;
 

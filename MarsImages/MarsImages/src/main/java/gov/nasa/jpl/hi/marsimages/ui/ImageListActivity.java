@@ -1,26 +1,19 @@
 package gov.nasa.jpl.hi.marsimages.ui;
 
 import android.annotation.SuppressLint;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.support.v4.app.Fragment;
+import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.Toast;
 
 import com.google.common.collect.Lists;
 import com.nostra13.universalimageloader.core.ImageLoader;
@@ -37,7 +30,7 @@ import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MARS_IMAGES_PREFERENCES_KEY;
 import static gov.nasa.jpl.hi.marsimages.MarsImagesApp.MISSION_NAME_PREFERENCE;
 
-public class ImageListActivity extends ActionBarActivity implements ImageListFragment.Callbacks,
+public class ImageListActivity extends AppCompatActivity implements ImageListFragment.Callbacks,
         ActionBar.OnNavigationListener {
 
     public static final int IMAGE_LIST_REQUEST_CODE = 105;
@@ -61,7 +54,7 @@ public class ImageListActivity extends ActionBarActivity implements ImageListFra
 
         if (imageViewPageNumber > 0) { //returning here after dismissing an ImageViewActivity
             ImageListFragment listFragment = (ImageListFragment)
-                    getSupportFragmentManager().findFragmentById(R.layout.activity_image_list);
+                    getSupportFragmentManager().findFragmentById(R.id.image_list);
             listFragment.mStickyList.setSelection(imageViewPageNumber);
         }
 
