@@ -632,11 +632,14 @@ public class BaseObject3D extends ATransformable3D implements Comparable<BaseObj
 	}
 
 	public ArrayList<TextureInfo> getTextureInfoList() {
-		ArrayList<TextureInfo> ti = mMaterial.getTextureInfoList();
+		if (mMaterial != null) {
+			ArrayList<TextureInfo> ti = mMaterial.getTextureInfoList();
 
-		for (int i = 0, j = mChildren.size(); i < j; i++)
-			ti.addAll(mChildren.get(i).getTextureInfoList());
-		return ti;
+			for (int i = 0, j = mChildren.size(); i < j; i++)
+				ti.addAll(mChildren.get(i).getTextureInfoList());
+			return ti;
+		}
+		return new ArrayList<TextureInfo>();
 	}
 
 	public SerializedObject3D toSerializedObject3D() {

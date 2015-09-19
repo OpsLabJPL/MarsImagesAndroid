@@ -201,8 +201,10 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             @Override
             public void run() {
                 for (ImageQuad photoQuad : photoQuads.values()) {
-                    if (photoQuad.getMaterial() != null)
-                        mTextureManager.removeTextures(photoQuad.getTextureInfoList());
+                    if (photoQuad.getMaterial() != null) {
+                        ArrayList<TextureInfo> list = photoQuad.getTextureInfoList();
+                        if (!list.isEmpty()) mTextureManager.removeTextures(list);
+                    }
                 }
                 photoQuads.clear();
                 clearChildren();

@@ -485,7 +485,7 @@ public class TextureManager {
 	}
 	
 	public TextureInfo addEtc1Texture(ByteBuffer buffer, int width, int height, TextureType textureType, boolean isExistingTexture, WrapType wrapType, FilterType filterType) {
-		return addTexture(new ByteBuffer[] { buffer }, null, width, height, textureType, null, false, false, isExistingTexture, wrapType, filterType, CompressionType.ETC1, ETC1.ETC1_RGB8_OES);
+		return addTexture(new ByteBuffer[]{buffer}, null, width, height, textureType, null, false, false, isExistingTexture, wrapType, filterType, CompressionType.ETC1, ETC1.ETC1_RGB8_OES);
 	}
 	
 	public TextureInfo addEtc1Texture(ByteBuffer[] buffer, int width, int height, TextureType textureType, boolean isExistingTexture, WrapType wrapType, FilterType filterType) {
@@ -539,7 +539,7 @@ public class TextureManager {
 	}
 	
 	public TextureInfo addPalettedTexture(ByteBuffer buffer, int width, int height, TextureType textureType, PaletteFormat format, boolean isExistingTexture, WrapType wrapType, FilterType filterType) {
-		return addPalettedTexture(new ByteBuffer[] { buffer }, width, height, textureType, format, isExistingTexture, wrapType, filterType);
+		return addPalettedTexture(new ByteBuffer[]{buffer}, width, height, textureType, format, isExistingTexture, wrapType, filterType);
 	}
 	
 	public TextureInfo add3dcTexture(ByteBuffer buffer, int width, int height, TextureType textureType, ThreeDcFormat format) {
@@ -590,7 +590,7 @@ public class TextureManager {
 	}
 	
 	public TextureInfo addAtcTexture(ByteBuffer buffer, int width, int height, TextureType textureType, AtcFormat format, boolean isExistingTexture, WrapType wrapType, FilterType filterType) {
-		return addAtcTexture(new ByteBuffer[] { buffer }, width, height, textureType, format, isExistingTexture, wrapType, filterType);
+		return addAtcTexture(new ByteBuffer[]{buffer}, width, height, textureType, format, isExistingTexture, wrapType, filterType);
 	}
 	
 	public TextureInfo addDxt1Texture(ByteBuffer buffer, int width, int height, TextureType textureType, Dxt1Format format) {
@@ -618,7 +618,7 @@ public class TextureManager {
 	}
 	
 	public TextureInfo addDxt1Texture(ByteBuffer buffer, int width, int height, TextureType textureType, Dxt1Format format, boolean isExistingTexture, WrapType wrapType, FilterType filterType) {
-		return addDxt1Texture(new ByteBuffer[] { buffer }, width, height, textureType, format, isExistingTexture, wrapType, filterType);
+		return addDxt1Texture(new ByteBuffer[]{buffer}, width, height, textureType, format, isExistingTexture, wrapType, filterType);
 	}
 	
 	public TextureInfo addPvrtcTexture(ByteBuffer buffer, int width, int height, TextureType textureType, PvrtcFormat format) {
@@ -653,7 +653,7 @@ public class TextureManager {
 	}
 	
 	public TextureInfo addPvrtcTexture(ByteBuffer buffer, int width, int height, TextureType textureType, PvrtcFormat format, boolean isExistingTexture, WrapType wrapType, FilterType filterType) {
-		return addPvrtcTexture(new ByteBuffer[] { buffer }, width, height, textureType, format, isExistingTexture, wrapType, filterType);
+		return addPvrtcTexture(new ByteBuffer[]{buffer}, width, height, textureType, format, isExistingTexture, wrapType, filterType);
 	}
 	
 	/**
@@ -868,20 +868,24 @@ public class TextureManager {
 	
 	public void removeTexture(TextureInfo textureInfo) {
 		mTextureInfoList.remove(textureInfo);
-		GLES20.glDeleteTextures(1, new int[] { textureInfo.getTextureId() }, 0);
+		GLES20.glDeleteTextures(1, new int[]{textureInfo.getTextureId()}, 0);
 	}
 	
 	public void removeTextures(ArrayList<TextureInfo> textureInfoList) {
-		int count = textureInfoList.size();
-		int[] textures = new int[count];
-		int i;
-		for(i=0; i<count; ++i) {
-			Integer textureId = textureInfoList.get(i).getTextureId();
-			textures[i] = textureId.intValue();
-			mTextureInfoList.remove(textureInfoList.get(i));
+		try {
+			int count = textureInfoList.size();
+			int[] textures = new int[count];
+			int i;
+			for (i = 0; i < count; ++i) {
+				Integer textureId = textureInfoList.get(i).getTextureId();
+				textures[i] = textureId.intValue();
+				mTextureInfoList.remove(textureInfoList.get(i));
+			}
+			textureInfoList.clear();
+			GLES20.glDeleteTextures(count, textures, 0);
+		} catch (Exception e) {
+			Log.e("RajawaliTextureManager", e.getMessage());
 		}
-		textureInfoList.clear();
-		GLES20.glDeleteTextures(count, textures, 0);
 	}
 	
 	public List<TextureInfo> getTextureInfoList() {
