@@ -70,10 +70,10 @@ public class Quad extends BaseObject3D {
         int ur = 2;
         int lr = 3;
 
-        indices[0] = (int) ll;
-        indices[1] = (int) ul;
-        indices[2] = (int) ur;
-        indices[3] = (int) lr;
+        indices[0] = ll;
+        indices[1] = ul;
+        indices[2] = ur;
+        indices[3] = lr;
 
         int numColors = NUM_VERTICES * 4;
         for (int j = 0; j < numColors; j += 4) {
