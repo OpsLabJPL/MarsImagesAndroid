@@ -12,11 +12,12 @@ import com.powellware.marsimages.R;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import gov.nasa.jpl.hi.marsimages.rovers.MarsTime;
+import gov.nasa.jpl.android.marstime.MarsTime;
 import gov.nasa.jpl.hi.marsimages.rovers.Opportunity;
 
-import static gov.nasa.jpl.hi.marsimages.rovers.MarsTime.CURIOSITY_WEST_LONGITUDE;
-import static gov.nasa.jpl.hi.marsimages.rovers.MarsTime.EARTH_SECS_PER_MARS_SEC;
+import static gov.nasa.jpl.android.marstime.MarsTime.CURIOSITY_WEST_LONGITUDE;
+import static gov.nasa.jpl.android.marstime.MarsTime.EARTH_SECS_PER_MARS_SEC;
+
 
 public class MarsClockActivity extends AppCompatActivity {
 
