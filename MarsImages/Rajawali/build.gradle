@@ -1,16 +1,12 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 17
-    buildToolsVersion '26.0.2'
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
 
     defaultConfig {
-        minSdkVersion 9
-        targetSdkVersion 17
-        compileOptions {
-            sourceCompatibility JavaVersion.VERSION_1_5
-            targetCompatibility JavaVersion.VERSION_1_5
-        }
+        minSdkVersion 14
+        targetSdkVersion 28
     }
 
     buildTypes {
@@ -22,5 +18,5 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-v4:18.+'
+    api 'com.android.support:support-v4:28.0.0'
 }

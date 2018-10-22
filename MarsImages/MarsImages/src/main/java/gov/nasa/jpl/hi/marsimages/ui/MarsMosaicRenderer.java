@@ -321,10 +321,14 @@ public class MarsMosaicRenderer extends RajawaliRenderer {
             Rover rover = MARS_IMAGES.getMission();
             for (Note prospectiveImage : imagesForRMC) {
                 //filter out any images that aren't on the mast i.e. mosaic-able.
-                if (!Rover.includedInMosaic(prospectiveImage))
+                if (!Rover.includedInMosaic(prospectiveImage)) {
                     continue;
-
-                double[] v2 = CameraModel.pointingVector(modelsForNotes.get(prospectiveImage.getTitle()));
+                }
+                JSONArray modelJson = modelsForNotes.get(prospectiveImage.getTitle());
+                if (modelJson == null) {
+                    continue;
+                }
+                double[] v2 = CameraModel.pointingVector(modelJson);
                 double angleThreshold = rover.fieldOfView(prospectiveImage)/20; //less overlap than ~5 degrees for Mastcam is problem for memory: see 42-852 looking south for example
                 boolean tooCloseToAnotherImage = false;
                 for (String title : notesInScene.keySet()) {
